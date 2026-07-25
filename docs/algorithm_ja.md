@@ -1,4 +1,31 @@
-# BPE アルゴリズムガイド（学生向け）
+# BPE アルゴリズムガイド
+
+<!-- story-nav:start -->
+
+| | | |
+|---|:---:|---|
+| ← 前: [学習ストーリー（入口）](learn_ja.md) | **学習ストーリー** · 第 1 / 11 章 · [入口](learn_ja.md) | 次: [パイプラインの歩き方](steps_ja.md) → |
+
+<!-- story-nav:end -->
+
+## この章の結論
+
+**BPE は、画像を周波数に分け、DC（大まかな明るさ）を先に、AC を重いビットから送る圧縮器です。**
+
+用語: [用語集](glossary_ja.md) / [具体例](walkthrough_ja.md)
+
+## 絵で見る
+
+```text
+画像
+  -> パディング（8の倍数）
+  -> DWT（周波数へ）
+  -> 8x8 ブロック
+  -> DC 先送  ->  AC（ビットプレーン）
+  -> .bpe ファイル
+```
+
+## 詳細
 
 この文書は、本リポジトリの **純 Rust 実装** がどのような順番で画像を圧縮・復元するかを、日本語で追えるようにしたものです。
 細部の数式より「どの関数が何をするか」を優先しています。ソースを読むときの地図として使ってください。
@@ -12,11 +39,13 @@
 BPE（Bit Plane Encoder）は、およそ次の流れです。
 
 1. 画像を読み、8 の倍数になるよう端を埋める（パディング）
+
+> **コラム**: なぜ 8 の倍数か→ 3 レベル DWT（\(2^3=8\)）と 8x8 ブロックが基本単位だから。詳細は [lifting97_ja.md](lifting97_ja.md) のコラム。
 2. ウェーブレット変換（DWT）で周波数成分に分解する
 3. 8×8 ブロックに並べ替える
 4. セグメント単位で
    - **DC**（各ブロック左上の低周波係数）を符号化
-   - **AC**（残り係数）を **ビットプレーン**（MSB→LSB）ごとに符号化
+   - **AC**（残り係数）を **ビットプレーン**（整数振幅の重いビットから）ごとに符号化
 5. ビットストリームを書き出す
 
 デコードはほぼ逆順です（ビットを読んで係数を復元 → 逆 DWT → 画像出力）。
@@ -122,10 +151,17 @@ decoder_engine
 
 ## AC のビットプレーンとは
 
-係数の絶対値を 2 進数で見たとき、**上位ビットから順に** 符号化します。
+ここで言うビットプレーンは、**整数係数の振幅** `|v|` を 2 進数で見たときの各ビット位です。
+ループは、その最上位（最も重いビット）から下位へ進みます。
 
 - あるプレーンで初めて「1」になった係数 → 有意性（significance）＋符号
 - すでに有意だった係数 → リファインメントビット（そのプレーンの 0/1）
+
+> **注意（浮動小数 DWT との関係）**
+>
+> `-t 0`（浮動小数 9/7）でも、BPE が見るのは **丸め後の整数係数** です（`round_away_from_zero`）。
+> IEEE 754 の符号・指数・下位ビット列を上位から剥いているわけではありません。
+> 「重いビット→軽いビット」は、その整数振幅に対する話です。
 
 `ac_bpe_encoding` / `ac_bpe_decoding`（[`src/ac/bpe.rs`](../src/ac/bpe.rs)）が、このループの司令塔です。
 
@@ -167,6 +203,10 @@ decoder_engine
 
 ## 学習のおすすめ順
 
+**物語として読むなら** [学習ストーリー（learn_ja.md）](learn_ja.md) から始めてください。各文書に「前へ / 次へ」があります。
+
+ソース中心で追うときの目安:
+
 1. この文書のマップで全体像をつかむ
 2. `encoder_engine` → `dc_encoding` → `ac_bpe_encoding` を上から読む
 3. 1 ビットプレーンについて `block_scan_encode` と `stages_en_coding` を追う
@@ -177,8 +217,37 @@ decoder_engine
 
 ## 関連リンク
 
+- 具体例（初心者必読）: [walkthrough_ja.md](walkthrough_ja.md)
+- 学習ストーリー: [learn_ja.md](learn_ja.md)
 - 段階ごとのステップ解説: [steps_ja.md](steps_ja.md)
+- 9/7 リフティング詳解: [lifting97_ja.md](lifting97_ja.md)
+- 実装読解ガイド（ソースの地図）: [code_reading_ja.md](code_reading_ja.md)
+- Rice 符号化詳解: [rice_ja.md](rice_ja.md)
+- DC 符号化: [dc_coding_ja.md](dc_coding_ja.md)
+- ブロック走査: [block_scan_ja.md](block_scan_ja.md)
+- AC ステージ: [ac_stages_ja.md](ac_stages_ja.md)
+- 係数補正: [adjust_ja.md](adjust_ja.md)
+- ヘッダ / ビットストリーム: [header_bitstream_ja.md](header_bitstream_ja.md)
+- 係数並べ替え: [coeff_group_ja.md](coeff_group_ja.md)
 - このソースでの検証手順: [verify_ja.md](verify_ja.md)
 - リポジトリ概要・ビルド手順: [README.md](../README.md)
 - 互換テスト: `scripts/golden_test.ps1`
 
+<!-- story-checkpoint:start -->
+
+## この章のあとで分かること
+
+- [ ] エンコードの大まかな順（パディング→DWT→ブロック→DC→AC）を説明できる
+- [ ] デコードがほぼ逆順であることが分かる
+- [ ] gaggles1/2/3 と refine が AC の一部だと知っている
+
+満足したら、下の「次へ」へ進んでください。
+
+<!-- story-checkpoint:end -->
+<!-- story-nav:start -->
+
+| | | |
+|---|:---:|---|
+| ← 前: [学習ストーリー（入口）](learn_ja.md) | **学習ストーリー** · 第 1 / 11 章 · [入口](learn_ja.md) | 次: [パイプラインの歩き方](steps_ja.md) → |
+
+<!-- story-nav:end -->
