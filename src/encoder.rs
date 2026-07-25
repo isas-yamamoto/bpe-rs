@@ -114,6 +114,10 @@ pub fn encoder_engine(coding: &mut CodingPara) -> BpeResult<()> {
     let total_blocks = ((pad_rows / BLOCK_SIZE) * (pad_cols / BLOCK_SIZE)) as u32;
     let mut block_string = alloc_block_string(total_blocks as usize);
     build_block_string(&transformed, pad_rows, pad_cols, &mut block_string);
+    crate::trace::dump_i32_flat(
+        "block_string_rust.txt",
+        block_string.iter().flat_map(|row| row.iter().copied()),
+    );
 
     // 5. Per-segment DC/AC bit-plane coding loop.
     let temp_padded_rows = coding.header.part1.pad_rows_3bits;

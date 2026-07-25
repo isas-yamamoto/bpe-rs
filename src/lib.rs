@@ -15,6 +15,7 @@ pub(crate) mod image_io;
 pub(crate) mod pattern;
 pub(crate) mod rice;
 pub(crate) mod stages;
+pub(crate) mod trace;
 pub(crate) mod wavelet;
 
 pub use error::{BpeError, BpeResult};

@@ -83,10 +83,14 @@ pub fn coefficients_rescaling(
 
 #[inline]
 fn round_away_from_zero(v: f32) -> i32 {
+    // C: `(int)(v + 0.5)` — the unsuffixed 0.5 literal is `double`, so the add
+    // happens in f64 before truncation. Matching that (instead of adding an
+    // f32 0.5) matters: values whose fractional part sits within one f32 ULP
+    // of 0.5 round differently in f32 arithmetic than in f64 arithmetic.
     if v >= 0.0 {
-        (v + 0.5) as i32
+        (v as f64 + 0.5) as i32
     } else {
-        (v - 0.5) as i32
+        (v as f64 - 0.5) as i32
     }
 }
 
@@ -123,6 +127,12 @@ pub fn dwt_forward(coding: &CodingPara, imgin: &ImageI32, img_wav: &mut ImageI32
         _ => return Err(BpeError::WaveletInvalid),
     }
     coeff_regroup(img_wav, pad_rows, pad_cols);
+    crate::trace::dump_i32_flat(
+        "dwt_forward_rust.txt",
+        img_wav[..pad_rows]
+            .iter()
+            .flat_map(|row| row[..pad_cols].iter().copied()),
+    );
     Ok(())
 }
 
@@ -165,7 +175,14 @@ pub fn dwt_reverse_floating(block: &mut ImageF32, coding: &CodingPara) -> BpeRes
     for k in 0..rows {
         for p in 0..coding.image_width as usize {
             let v = temp_f[k][p];
-            block[k][p] = if v >= 0.0 { v + 0.5 } else { v - 0.5 };
+            // C: `(float)(v + 0.5)` — add happens in f64 (unsuffixed literal),
+            // then narrows to f32. See round_away_from_zero above for why
+            // that differs from a straight f32 add near the 0.5 boundary.
+            block[k][p] = if v >= 0.0 {
+                (v as f64 + 0.5) as f32
+            } else {
+                (v as f64 - 0.5) as f32
+            };
         }
     }
     Ok(())
