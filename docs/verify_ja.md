@@ -123,6 +123,36 @@ ALL PASS
 
 ---
 
+## 5.5 手順 D: CI と同じスモークテスト
+
+GitHub Actions では C 参照実装を置けないので、バイト一致の代わりに
+Rust 単体の encode -> decode を通して画素誤差を見ている。手元でも同じことができる。
+
+```powershell
+cd rust
+$env:CARGO_TARGET_DIR = "$PWD\target"
+cargo build --release
+python scripts/ci_roundtrip.py
+```
+
+出力例:
+
+```
+PASS: int_r0 bpe=18300B mean_error=0.000 max_error=0
+PASS: int_r1 bpe=8192B mean_error=0.381 max_error=5
+PASS: float_r1 bpe=8192B mean_error=0.134 max_error=4
+
+ALL PASS
+```
+
+見方:
+
+- `int_r0`（整数 DWT・レート無制限）は **誤差 0**、すなわち可逆になる
+- 損失ケースは平均・最大誤差が閾値内かを見る（大きく崩れたときだけ失敗する）
+- ビット一致の保証にはならないので、改造後は必ず手順 C も実行する
+
+---
+
 ## 6. 失敗したときの見方
 
 | 症状 | 疑う場所の例 |
