@@ -9,8 +9,7 @@ pub use lifting97i::lifting_m97_2d;
 
 use crate::error::{BpeError, BpeResult};
 use crate::types::{
-    alloc_image_f32, CodingPara, HeaderPart4, ImageF32, ImageI32, FLOAT_WAVELET,
-    INTEGER_WAVELET,
+    alloc_image_f32, CodingPara, HeaderPart4, ImageF32, ImageI32, FLOAT_WAVELET, INTEGER_WAVELET,
 };
 
 fn band_scales(part4: &HeaderPart4) -> [i32; 10] {
@@ -49,7 +48,12 @@ fn band_regions(rows: usize, cols: usize) -> [(usize, usize, usize, usize); 10] 
     ]
 }
 
-pub fn coefficients_scaling(transformed: &mut ImageI32, rows: usize, cols: usize, part4: &HeaderPart4) {
+pub fn coefficients_scaling(
+    transformed: &mut ImageI32,
+    rows: usize,
+    cols: usize,
+    part4: &HeaderPart4,
+) {
     let scales = band_scales(part4);
     for (idx, &(r0, r1, c0, c1)) in band_regions(rows, cols).iter().enumerate() {
         for i in r0..r1 {
@@ -61,7 +65,12 @@ pub fn coefficients_scaling(transformed: &mut ImageI32, rows: usize, cols: usize
 }
 
 /// Integer divide toward zero, matching C.
-pub fn coefficients_rescaling(transformed: &mut ImageI32, rows: usize, cols: usize, part4: &HeaderPart4) {
+pub fn coefficients_rescaling(
+    transformed: &mut ImageI32,
+    rows: usize,
+    cols: usize,
+    part4: &HeaderPart4,
+) {
     let scales = band_scales(part4);
     for (idx, &(r0, r1, c0, c1)) in band_regions(rows, cols).iter().enumerate() {
         for i in r0..r1 {

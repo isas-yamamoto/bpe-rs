@@ -25,7 +25,12 @@ fn header_roundtrip_default() {
     }
     drop(enc.bits.file.take());
     let bytes = fs::read(&path).unwrap();
-    assert_eq!(bytes.len(), 19, "expected 19-byte header, got {}", bytes.len());
+    assert_eq!(
+        bytes.len(),
+        19,
+        "expected 19-byte header, got {}",
+        bytes.len()
+    );
     let mut dec = CodingPara::new();
     dec.bits.open_read(path.to_str().unwrap()).unwrap();
     header_readin(&mut dec).unwrap();

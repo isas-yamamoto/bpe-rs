@@ -84,7 +84,8 @@ pub fn image_read(coding: &CodingPara) -> BpeResult<ImageI32> {
     if depth != 0 && depth <= 8 {
         let mut rowbuf = vec![0u8; cols];
         for r in 0..rows {
-            file.read_exact(&mut rowbuf).map_err(|_| BpeError::FileError)?;
+            file.read_exact(&mut rowbuf)
+                .map_err(|_| BpeError::FileError)?;
             for i in 0..cols {
                 image[r][i] = if signed {
                     rowbuf[i] as i8 as i32
@@ -96,7 +97,8 @@ pub fn image_read(coding: &CodingPara) -> BpeResult<ImageI32> {
     } else {
         let mut rowbuf = vec![0u8; cols * 2];
         for r in 0..rows {
-            file.read_exact(&mut rowbuf).map_err(|_| BpeError::FileError)?;
+            file.read_exact(&mut rowbuf)
+                .map_err(|_| BpeError::FileError)?;
             for i in 0..cols {
                 let v = u16::from_le_bytes([rowbuf[i * 2], rowbuf[i * 2 + 1]]);
                 image[r][i] = if signed { v as i16 as i32 } else { v as i32 };
@@ -242,7 +244,9 @@ pub fn image_write(coding: &mut CodingPara, image: &ImageI32) -> BpeResult<()> {
     let swap = coding.pixel_byte_order != machineendianness;
 
     if depth != 0 && depth <= 8 {
-        write_u8_rows(&mut file, rows, width, |r, i| clamp_u8_i32(image[r][i], signed))?;
+        write_u8_rows(&mut file, rows, width, |r, i| {
+            clamp_u8_i32(image[r][i], signed)
+        })?;
     } else if depth == 0 || depth <= 15 {
         let (pixel_min, pixel_max) = pixel_limits_16(depth, signed);
         write_u16_rows(&mut file, rows, width, signed, swap, |r, i| {
@@ -270,7 +274,9 @@ pub fn image_write_float(coding: &CodingPara, image: &ImageF32) -> BpeResult<()>
     let swap = coding.pixel_byte_order != machineendianness;
 
     if depth != 0 && depth <= 8 {
-        write_u8_rows(&mut file, rows, width, |r, i| clamp_u8_f32(image[r][i], signed))?;
+        write_u8_rows(&mut file, rows, width, |r, i| {
+            clamp_u8_f32(image[r][i], signed)
+        })?;
     } else if depth == 0 || depth <= 15 {
         let (pixel_min, pixel_max) = pixel_limits_16(depth, signed);
         write_u16_rows(&mut file, rows, width, signed, swap, |r, i| {

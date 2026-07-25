@@ -33,12 +33,20 @@ pub const ENUM_TYPE_HIJ: u8 = 7;
 
 #[inline]
 pub fn amplitude(a: i32) -> i32 {
-    if a >= 0 { a } else { -a }
+    if a >= 0 {
+        a
+    } else {
+        -a
+    }
 }
 
 #[inline]
 pub fn sign_of(var: i32) -> u8 {
-    if var < 0 { NEGATIVE_SIGN } else { POSITIVE_SIGN }
+    if var < 0 {
+        NEGATIVE_SIGN
+    } else {
+        POSITIVE_SIGN
+    }
 }
 
 #[derive(Debug, Clone, Default)]

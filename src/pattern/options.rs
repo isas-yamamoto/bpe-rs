@@ -113,11 +113,17 @@ pub fn coding_options(
         option[0] = 1;
     }
 
-    if bits_counter_3bits[2] <= bits_counter_3bits[0] && bits_counter_3bits[2] <= bits_counter_3bits[1] {
+    if bits_counter_3bits[2] <= bits_counter_3bits[0]
+        && bits_counter_3bits[2] <= bits_counter_3bits[1]
+    {
         option[1] = 3;
-    } else if bits_counter_3bits[0] <= bits_counter_3bits[1] && bits_counter_3bits[0] <= bits_counter_3bits[2] {
+    } else if bits_counter_3bits[0] <= bits_counter_3bits[1]
+        && bits_counter_3bits[0] <= bits_counter_3bits[2]
+    {
         option[1] = 0;
-    } else if bits_counter_3bits[1] <= bits_counter_3bits[0] && bits_counter_3bits[1] <= bits_counter_3bits[2] {
+    } else if bits_counter_3bits[1] <= bits_counter_3bits[0]
+        && bits_counter_3bits[1] <= bits_counter_3bits[2]
+    {
         option[1] = 1;
     }
 

@@ -268,7 +268,16 @@ fn stage3(
                 } else if ii > stop_block {
                     bump(&mut blocks[i], m, n, beta_2);
                 } else {
-                    stage3_current_block(&mut blocks[i], m, n, x, y, bit_plane_check, beta_1, beta_2);
+                    stage3_current_block(
+                        &mut blocks[i],
+                        m,
+                        n,
+                        x,
+                        y,
+                        bit_plane_check,
+                        beta_1,
+                        beta_2,
+                    );
                 }
             }
         }
@@ -440,7 +449,16 @@ fn stage4(
                     if (m == 0 && n == 0) || blocks[i].block_int[m][n] == 0 {
                         continue;
                     }
-                    stage4_current_block(&mut blocks[i], m, n, x, y, bit_plane_check, beta_1, beta_2);
+                    stage4_current_block(
+                        &mut blocks[i],
+                        m,
+                        n,
+                        x,
+                        y,
+                        bit_plane_check,
+                        beta_1,
+                        beta_2,
+                    );
                 }
             }
         }
@@ -634,7 +652,8 @@ pub fn adjust_output(coding: &mut CodingPara, block_info: &mut [BitPlaneBits]) -
 
     let bit_depth_dc = coding.header.part1.bit_depth_dc_5bits as i16;
     for block in block_info.iter_mut().take(total_blocks) {
-        let combined = (block.shifted_dc as i32).wrapping_add(block.decoding_dc_remainder as i32) as u32;
+        let combined =
+            (block.shifted_dc as i32).wrapping_add(block.decoding_dc_remainder as i32) as u32;
         block.block_int[0][0] = deconv_twos_comp(combined, bit_depth_dc)?;
         block.block_float[0][0] = block.block_int[0][0] as f32;
     }
@@ -645,11 +664,12 @@ pub fn adjust_output(coding: &mut CodingPara, block_info: &mut [BitPlaneBits]) -
     {
         let stop = coding.decoding_stop_locations.clone();
 
-        let b_dc: i32 = if (stop.bit_plane_stop_decoding as i32) <= coding.quantization_factor_q as i32 {
-            stop.bit_plane_stop_decoding as i32
-        } else {
-            coding.quantization_factor_q as i32
-        };
+        let b_dc: i32 =
+            if (stop.bit_plane_stop_decoding as i32) <= coding.quantization_factor_q as i32 {
+                stop.bit_plane_stop_decoding as i32
+            } else {
+                coding.quantization_factor_q as i32
+            };
 
         if coding.header.part4.dwt_type == INTEGER_WAVELET {
             if b_dc >= 1 {
@@ -667,7 +687,14 @@ pub fn adjust_output(coding: &mut CodingPara, block_info: &mut [BitPlaneBits]) -
             };
             let bit_plane_check: u32 = 1u32 << (stop.bit_plane_stop_decoding as u32);
 
-            dispatch_stage(block_info, total_blocks, &stop, beta_1, beta_2, bit_plane_check);
+            dispatch_stage(
+                block_info,
+                total_blocks,
+                &stop,
+                beta_1,
+                beta_2,
+                bit_plane_check,
+            );
         } else {
             let bit_plane_check: u32 = 1u32 << (stop.bit_plane_stop_decoding as u32);
 
@@ -685,10 +712,24 @@ pub fn adjust_output(coding: &mut CodingPara, block_info: &mut [BitPlaneBits]) -
                     ((1i32 << bp) as f32) - 0.5,
                 )
             } else {
-                (0.0, if stop.bit_plane_stop_decoding == 0 { 0.5 } else { 0.0 })
+                (
+                    0.0,
+                    if stop.bit_plane_stop_decoding == 0 {
+                        0.5
+                    } else {
+                        0.0
+                    },
+                )
             };
 
-            dispatch_stage(block_info, total_blocks, &stop, beta_1, beta_2, bit_plane_check);
+            dispatch_stage(
+                block_info,
+                total_blocks,
+                &stop,
+                beta_1,
+                beta_2,
+                bit_plane_check,
+            );
         }
     }
 

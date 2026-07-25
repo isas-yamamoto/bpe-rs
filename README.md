@@ -12,7 +12,13 @@
 
 ## アルゴリズムの読み方
 
-エンコードの段（上から下へ）:
+学生向けの流れ・用語の解説と図（Mermaid）は次を参照してください。
+
+- **[docs/algorithm_ja.md](docs/algorithm_ja.md)** — 全体マップ
+- **[docs/steps_ja.md](docs/steps_ja.md)** — 段階ごとのステップ解説
+- **[docs/verify_ja.md](docs/verify_ja.md)** — CLI / `cargo test` / ゴールデンでの検証
+
+要約（エンコード）:
 
 1. `encoder_engine` — パディング → DWT → ブロック並べ替え → セグメントループ
 2. `dc_encoding` — 統計 → ビット深度 → ヘッダ → 量子化 → DPCM → エントロピー
@@ -20,14 +26,6 @@
 4. 各プレーン: `block_scan_encode` → `stages_en_coding`（gaggles1/2/3 → refine）
 
 デコードは鏡像: `dc_decoding` → `ac_bpe_decoding` → `stages_de_coding` → `adjust_output` → 逆 DWT。
-
-```
-encoder_engine
-  └─ segment: dc_encoding → ac_bpe_encoding
-       └─ bitplane: block_scan_encode → stages_en_coding
-            └─ gaggles1 (TypeP) → gaggles2 (TranB/D/Ci)
-               → gaggles3 (TranGi/Hi/Hij) → ref_bits_en
-```
 
 ## 構成
 

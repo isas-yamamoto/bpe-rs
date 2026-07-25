@@ -60,7 +60,8 @@ fn output_code_word(coding: &mut CodingPara) -> BpeResult<()> {
             24 => {
                 // C writes low byte, then mid, then high via putc of masked values
                 let buf = coding.bits.byte_buffer_4bytes;
-                file.write_all(&[(buf & 0xFF) as u8]).map_err(|_| BpeError::FileError)?;
+                file.write_all(&[(buf & 0xFF) as u8])
+                    .map_err(|_| BpeError::FileError)?;
                 file.write_all(&[((buf & 0xFF00) >> 8) as u8])
                     .map_err(|_| BpeError::FileError)?;
                 file.write_all(&[((buf & 0xFF0000) >> 16) as u8])
@@ -150,8 +151,7 @@ pub fn bits_read(coding: &mut CodingPara, length: i16) -> BpeResult<u32> {
                 coding.bits.code_word_alignment_bits = 8;
             }
             bit <<= 1;
-            bit += (coding.bits.byte_buffer_4bytes
-                >> (coding.bits.code_word_alignment_bits - 1))
+            bit += (coding.bits.byte_buffer_4bytes >> (coding.bits.code_word_alignment_bits - 1))
                 & 0x01;
             coding.bits.code_word_alignment_bits -= 1;
             coding.bits.seg_bit_counter += 1;
@@ -160,12 +160,10 @@ pub fn bits_read(coding: &mut CodingPara, length: i16) -> BpeResult<u32> {
             if coding.decoding_allowed_bits_size_in_segment != 0
                 && coding.bits.seg_bit_counter >= coding.decoding_allowed_bits_size_in_segment
             {
-                let mut current_total_bytes = (coding.bits.seg_bit_counter
-                    + coding.bits.code_word_alignment_bits)
-                    / 8;
+                let mut current_total_bytes =
+                    (coding.bits.seg_bit_counter + coding.bits.code_word_alignment_bits) / 8;
                 coding.rate_reached = true;
-                coding.decoding_stop_locations.bit_plane_stop_decoding =
-                    coding.bit_plane as i8 - 1;
+                coding.decoding_stop_locations.bit_plane_stop_decoding = coding.bit_plane as i8 - 1;
                 coding.decoding_stop_locations.total_bits_read_this_time = i + 1;
                 bit <<= (length - i - 1) as u32;
                 while current_total_bytes < coding.header.part2.seg_byte_limit_27bits {
@@ -183,11 +181,10 @@ pub fn bits_read(coding: &mut CodingPara, length: i16) -> BpeResult<u32> {
     Ok(bit)
 }
 
-
 pub fn segment_buffer_flush_encoder(coding: &mut CodingPara) -> BpeResult<()> {
     if coding.bits.code_word_alignment_bits != 0 {
-        let shift = coding.bits.code_word_length as i32
-            - coding.bits.code_word_alignment_bits as i32;
+        let shift =
+            coding.bits.code_word_length as i32 - coding.bits.code_word_alignment_bits as i32;
         bits_output(coding, 0, shift)?;
     }
     if coding.header.part2.seg_byte_limit_27bits != 0

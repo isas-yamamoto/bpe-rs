@@ -38,15 +38,15 @@ fn forward_lifting97f(x_in: &mut [f32], n: usize, x_alloc: &mut [f32]) {
     let mut d = vec![0f32; half + 3];
     let mut r = vec![0f32; half + 2];
     let lpf = &LOW_PASS_FILTER[4..]; // LPF[0] at center
-    // C: LPF = LowPassFilter + 4, so LPF[0]=LowPassFilter[4], LPF[1]=[5]... but uses LPF[0]..[4]
-    // Actually LowPassFilter has 9 elements, +4 points to index 4 (center 0.852...)
-    // LPF[0]=0.852..., LPF[1]=0.377..., LPF[2]=-0.110..., LPF[3]=-0.023..., LPF[4]=0.037...
-    // Wait C: float const *LPF = LowPassFilter + 4; uses LPF[0]..LPF[4]
-    // LowPassFilter[4]=0.852698679009, [5]=0.377..., [6]=-0.110..., [7]=-0.023..., [8]=0.037...
-    // But also LPF[-something]? No only non-negative indices.
-    // Actually looking at the formula: LPF[0]*x[2n] + LPF[1]*(x[2n-1]+x[2n+1]) + ...
-    // With LPF = LowPassFilter+4: LPF[0]=filter[4], LPF[1]=filter[5], etc.
-    // HPF = HighPassFilter + 3: HPF[0]=filter[3]=-0.788..., HPF[1]=0.418..., etc.
+                                     // C: LPF = LowPassFilter + 4, so LPF[0]=LowPassFilter[4], LPF[1]=[5]... but uses LPF[0]..[4]
+                                     // Actually LowPassFilter has 9 elements, +4 points to index 4 (center 0.852...)
+                                     // LPF[0]=0.852..., LPF[1]=0.377..., LPF[2]=-0.110..., LPF[3]=-0.023..., LPF[4]=0.037...
+                                     // Wait C: float const *LPF = LowPassFilter + 4; uses LPF[0]..LPF[4]
+                                     // LowPassFilter[4]=0.852698679009, [5]=0.377..., [6]=-0.110..., [7]=-0.023..., [8]=0.037...
+                                     // But also LPF[-something]? No only non-negative indices.
+                                     // Actually looking at the formula: LPF[0]*x[2n] + LPF[1]*(x[2n-1]+x[2n+1]) + ...
+                                     // With LPF = LowPassFilter+4: LPF[0]=filter[4], LPF[1]=filter[5], etc.
+                                     // HPF = HighPassFilter + 3: HPF[0]=filter[3]=-0.788..., HPF[1]=0.418..., etc.
 
     let lpf0 = LOW_PASS_FILTER[4];
     let lpf1 = LOW_PASS_FILTER[5];
