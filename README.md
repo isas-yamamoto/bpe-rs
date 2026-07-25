@@ -1,5 +1,7 @@
 # BPE Rust (`bpe_rs`)
 
+[![CI](https://github.com/isas-yamamoto/bpe-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/isas-yamamoto/bpe-rs/actions/workflows/ci.yml)
+
 `original/source` とビットストリーム互換の純 Rust Bit Plane Encoder。
 
 ## 互換性（検証済み）
@@ -46,6 +48,18 @@ rust/
 ```
 
 エンコード／デコードはすべて純 Rust。C FFI や `c_bridge` は含まない。
+
+## CI / CD
+
+GitHub Actions で次を自動実行する。
+
+| ワークフロー | 契機 | 内容 |
+|--------------|------|------|
+| [`ci.yml`](.github/workflows/ci.yml) | push / PR (main) | `cargo fmt --check`、`cargo clippy`、Linux/Windows/macOS で `cargo test` とラウンドトリップ検証 |
+| [`release.yml`](.github/workflows/release.yml) | `v*` タグ | 3 OS 分の `bpe` バイナリをビルドし GitHub Release に公開 |
+
+C 参照実装はこのリポジトリに含まれないため、バイト一致の `scripts/golden_test.ps1` はローカル専用。
+CI では `scripts/ci_roundtrip.py` が encode -> decode を通し、サイズと画素誤差を検査する。
 
 ## ビルド / 実行
 
