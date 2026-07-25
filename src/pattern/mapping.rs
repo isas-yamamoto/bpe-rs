@@ -108,3 +108,112 @@ pub fn bit_plane_symbol_reset(sym: &mut SymbolDetails) {
     sym.sym_val = 0;
     sym.type_ = 0;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{ENUM_TRAN_B, ENUM_TYPE_P};
+
+    fn roundtrip(sym_len: u8, type_: u8, sym_val: u8) -> u8 {
+        let mut sym = SymbolDetails {
+            sym_val,
+            sym_len,
+            type_,
+            ..Default::default()
+        };
+        pattern_mapping(&mut sym).unwrap();
+        let mapped = sym.sym_mapped_pattern;
+        let mut back = SymbolDetails {
+            sym_mapped_pattern: mapped,
+            sym_len,
+            type_,
+            ..Default::default()
+        };
+        de_mapping_pattern(&mut back).unwrap();
+        back.sym_val
+    }
+
+    #[test]
+    fn one_bit_symbols_pass_through() {
+        for value in 0..=1u8 {
+            assert_eq!(roundtrip(1, ENUM_TYPE_P, value), value);
+        }
+    }
+
+    #[test]
+    fn two_bit_symbols_are_bijective() {
+        for value in 0..4u8 {
+            assert_eq!(roundtrip(2, ENUM_TYPE_P, value), value);
+        }
+    }
+
+    #[test]
+    fn three_bit_symbols_are_bijective() {
+        for value in 0..8u8 {
+            assert_eq!(roundtrip(3, ENUM_TRAN_B, value), value);
+        }
+    }
+
+    /// The TranD table repeats pattern 0 at index 0 and 2, so the C decoder
+    /// starts its search at 1 and symbol value 0 is never emitted.
+    #[test]
+    fn three_bit_tran_d_symbols_are_bijective_from_one() {
+        for value in 1..8u8 {
+            assert_eq!(roundtrip(3, ENUM_TRAN_D, value), value);
+        }
+    }
+
+    #[test]
+    fn four_bit_type_ci_symbols_are_bijective() {
+        for value in 0..16u8 {
+            assert_eq!(roundtrip(4, ENUM_TYPE_CI, value), value);
+        }
+    }
+
+    /// Same repeated-pattern situation as TranD: value 0 is unused.
+    #[test]
+    fn four_bit_tran_hi_and_type_hij_symbols_are_bijective_from_one() {
+        for value in 1..16u8 {
+            assert_eq!(roundtrip(4, ENUM_TRAN_HI, value), value);
+            assert_eq!(roundtrip(4, ENUM_TYPE_HIJ, value), value);
+        }
+    }
+
+    #[test]
+    fn zero_length_symbol_is_ignored() {
+        let mut sym = SymbolDetails {
+            sym_val: 3,
+            sym_len: 0,
+            ..Default::default()
+        };
+        pattern_mapping(&mut sym).unwrap();
+        assert_eq!(sym.sym_mapped_pattern, 0);
+    }
+
+    #[test]
+    fn too_long_symbol_is_rejected() {
+        let mut sym = SymbolDetails {
+            sym_len: 5,
+            ..Default::default()
+        };
+        assert!(pattern_mapping(&mut sym).is_err());
+        assert!(de_mapping_pattern(&mut sym).is_err());
+    }
+
+    #[test]
+    fn reset_clears_every_field() {
+        let mut sym = SymbolDetails {
+            sym_val: 1,
+            sym_len: 2,
+            sym_mapped_pattern: 3,
+            sign: 1,
+            type_: ENUM_TYPE_CI,
+        };
+        bit_plane_symbol_reset(&mut sym);
+        assert_eq!(sym.sym_val, 0);
+        assert_eq!(sym.sym_len, 0);
+        assert_eq!(sym.sym_mapped_pattern, 0);
+        assert_eq!(sym.sign, 0);
+        assert_eq!(sym.type_, 0);
+    }
+}

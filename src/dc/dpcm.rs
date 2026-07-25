@@ -87,3 +87,59 @@ pub fn dpcm_dc_demapper(block_info: &mut [BitPlaneBits], size: usize, n: i16) {
         let _ = &mut d;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const N: i16 = 8;
+
+    fn make_blocks(raw_dc: &[u32]) -> Vec<BitPlaneBits> {
+        raw_dc
+            .iter()
+            .map(|&dc| BitPlaneBits {
+                shifted_dc: dc,
+                ..Default::default()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn mapper_then_demapper_restores_shifted_dc() {
+        let raw_dc: Vec<u32> = vec![0, 1, 2, 255, 128, 127, 64, 200, 3, 250];
+        let size = raw_dc.len();
+
+        let mut encoded = make_blocks(&raw_dc);
+        dpcm_dc_mapper(&mut encoded, size, N);
+
+        let mut decoded = make_blocks(&vec![0; size]);
+        for i in 0..size {
+            decoded[i].mapped_dc = encoded[i].mapped_dc;
+        }
+        dpcm_dc_demapper(&mut decoded, size, N);
+
+        for i in 0..size {
+            assert_eq!(
+                decoded[i].shifted_dc, encoded[i].shifted_dc,
+                "block {} mismatch",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn first_block_is_sent_verbatim() {
+        let mut blocks = make_blocks(&[42, 43]);
+        dpcm_dc_mapper(&mut blocks, 2, N);
+        assert_eq!(blocks[0].mapped_dc, 42);
+    }
+
+    #[test]
+    fn constant_dc_maps_to_zero_differences() {
+        let mut blocks = make_blocks(&vec![100; 5]);
+        dpcm_dc_mapper(&mut blocks, 5, N);
+        for block in blocks.iter().skip(1) {
+            assert_eq!(block.mapped_dc, 0);
+        }
+    }
+}

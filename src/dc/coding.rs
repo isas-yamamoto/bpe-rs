@@ -279,3 +279,52 @@ pub fn dc_decoding(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ac_bit_depth_counts_significant_bits() {
+        assert_eq!(derive_bit_depth_ac(0), 0);
+        assert_eq!(derive_bit_depth_ac(1), 1);
+        assert_eq!(derive_bit_depth_ac(2), 2);
+        assert_eq!(derive_bit_depth_ac(3), 2);
+        assert_eq!(derive_bit_depth_ac(4), 3);
+        assert_eq!(derive_bit_depth_ac(255), 8);
+    }
+
+    #[test]
+    fn dc_bit_depth_reserves_a_sign_bit() {
+        assert_eq!(derive_bit_depth_dc(0, 0), 1);
+        assert_eq!(derive_bit_depth_dc(0, 1), 2);
+        assert_eq!(derive_bit_depth_dc(0, 255), 9);
+    }
+
+    #[test]
+    fn dc_bit_depth_uses_the_dominant_magnitude() {
+        // Negative powers of two need one bit less than their positive twin.
+        assert_eq!(derive_bit_depth_dc(-8, 0), 4);
+        assert_eq!(derive_bit_depth_dc(-9, 0), 5);
+        // The larger magnitude decides, regardless of its sign.
+        assert_eq!(derive_bit_depth_dc(-4, 100), derive_bit_depth_dc(0, 100));
+    }
+
+    #[test]
+    fn quantization_factor_is_zero_for_shallow_dc() {
+        for depth_ac in 0..=8u8 {
+            assert_eq!(quantization_factor_q_prime(3, depth_ac), 0);
+            assert_eq!(quantization_factor_q_prime(0, depth_ac), 0);
+        }
+    }
+
+    #[test]
+    fn quantization_factor_follows_the_three_branches() {
+        // bit_depth_dc - (1 + bit_depth_ac / 2) <= 1 -> bit_depth_dc - 3
+        assert_eq!(quantization_factor_q_prime(5, 8), 2);
+        // difference > 10 -> bit_depth_dc - 10
+        assert_eq!(quantization_factor_q_prime(12, 0), 2);
+        // otherwise 1 + bit_depth_ac / 2
+        assert_eq!(quantization_factor_q_prime(8, 6), 4);
+    }
+}
