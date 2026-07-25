@@ -1,0 +1,6 @@
+/target/
+/testdata/
+/_*.py
+/fix_tests.py
+**/*.pdb
+**/*.o

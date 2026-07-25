@@ -1,0 +1,13 @@
+[package]
+name = "bpe_rs"
+version = "0.1.0"
+edition = "2021"
+description = "Bit Plane Encoder - Rust port compatible with original/source"
+license = "Unlicense"
+
+[[bin]]
+name = "bpe"
+path = "src/main.rs"
+
+[dependencies]
+
