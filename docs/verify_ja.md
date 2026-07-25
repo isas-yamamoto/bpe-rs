@@ -35,11 +35,30 @@ $env:CARGO_TARGET_DIR = "$PWD\target"
 cargo test
 ```
 
-例:
-- `wavelet::lifting97i` の小規模 roundtrip
-- `tests/header_bits.rs` のヘッダ書き込み->読み戻し
+中身は大きく 2 種類です。
 
-`tests/golden_roundtrip.rs` はデフォルトで `#[ignore]` です（C 二進が必要なため）。
+**モジュール内の単体テスト**（`src/**` の `#[cfg(test)] mod tests`）
+
+| 場所 | 見ていること |
+|------|--------------|
+| `rice.rs` | Rice 符号表を `bit_length` 1..4 × 全オプション × 全値で往復させ、`select_rice_k` の k 選択 |
+| `bitstream.rs` | ビット入出力の往復、パディング、セグメント上限と `rate_reached` の挙動 |
+| `dc/twos_comp.rs` | 2 の補数変換の往復と不正幅の拒絶 |
+| `dc/dpcm.rs` | DPCM 写像→逆写像で `shifted_dc` が戻ること |
+| `dc/coding.rs` | DC/AC ビット深度の導出と量子化係数の分岐 |
+| `pattern/mapping.rs` | パターン写像の全値全射性（TranD / TranHi の未使用値を除く） |
+| `wavelet/lifting97i.rs` | 整数 9/7 が 1D/2D で完全可逆、平坦信号で高周波が 0 |
+| `wavelet/lifting97f.rs` | 浮動小数 9/7 が許容誤差内で復元 |
+
+**統合テスト**（`tests/`）
+
+| ファイル | 見ていること |
+|----------|--------------|
+| `pipeline_roundtrip.rs` | ライブラリ API で encode -> decode。レート無制限なら可逆、複数セグメントでも可逆、レート制限でバイト上限を守ること |
+| `header_bits.rs` | ヘッダの書き込み -> 読み戻し |
+| `golden_roundtrip.rs` | C 二進とのバイト一致。C 実装が必要なのでデフォルト `#[ignore]` |
+
+`#[ignore]` を含めて実行したいときは `cargo test -- --include-ignored` を使います。
 
 ---
 

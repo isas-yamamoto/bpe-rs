@@ -501,3 +501,166 @@ pub(crate) fn select_rice_k(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bitstream::segment_buffer_flush_encoder;
+    use crate::types::GAGGLE_SIZE;
+    use std::fs;
+    use std::path::PathBuf;
+
+    fn temp_path(name: &str) -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("testdata");
+        fs::create_dir_all(&dir).unwrap();
+        dir.join(name)
+    }
+
+    /// Encode every value of `values` in sequence, then decode the same sequence
+    /// back and require an exact match. This pins the Rice codeword tables.
+    fn assert_roundtrip(name: &str, bit_length: u8, option: [u8; 3], values: &[u32]) {
+        let path = temp_path(name);
+        let mut enc = CodingPara::new();
+        enc.bits.open_write(path.to_str().unwrap()).unwrap();
+        for &value in values {
+            rice_coding(&mut enc, value, bit_length, &option).unwrap();
+        }
+        segment_buffer_flush_encoder(&mut enc).unwrap();
+        drop(enc.bits.file.take());
+
+        let mut dec = CodingPara::new();
+        dec.bits.open_read(path.to_str().unwrap()).unwrap();
+        for &value in values {
+            let decoded = rice_decoding(&mut dec, bit_length as i16, &option).unwrap();
+            assert_eq!(
+                decoded, value,
+                "bit_length={} option={:?} value={}",
+                bit_length, option, value
+            );
+        }
+    }
+
+    #[test]
+    fn roundtrip_length1() {
+        assert_roundtrip("rice_len1.bin", 1, [0, 0, 0], &[0, 1, 1, 0, 1]);
+    }
+
+    #[test]
+    fn roundtrip_length2_all_options() {
+        let values: Vec<u32> = (0..=3).collect();
+        assert_roundtrip("rice_len2_opt0.bin", 2, [0, 0, 0], &values);
+        assert_roundtrip("rice_len2_opt1.bin", 2, [1, 0, 0], &values);
+    }
+
+    #[test]
+    fn roundtrip_length3_all_options() {
+        let values: Vec<u32> = (0..=7).collect();
+        assert_roundtrip("rice_len3_opt0.bin", 3, [0, 0, 0], &values);
+        assert_roundtrip("rice_len3_opt1.bin", 3, [0, 1, 0], &values);
+        assert_roundtrip("rice_len3_opt3.bin", 3, [0, 3, 0], &values);
+    }
+
+    #[test]
+    fn roundtrip_length4_all_options() {
+        let values: Vec<u32> = (0..=15).collect();
+        assert_roundtrip("rice_len4_opt0.bin", 4, [0, 0, 0], &values);
+        assert_roundtrip("rice_len4_opt1.bin", 4, [0, 0, 1], &values);
+        assert_roundtrip("rice_len4_opt2.bin", 4, [0, 0, 2], &values);
+        assert_roundtrip("rice_len4_opt3.bin", 4, [0, 0, 3], &values);
+    }
+
+    #[test]
+    fn length_zero_emits_nothing() {
+        let path = temp_path("rice_len0.bin");
+        let mut enc = CodingPara::new();
+        enc.bits.open_write(path.to_str().unwrap()).unwrap();
+        rice_coding(&mut enc, 5, 0, &[0, 0, 0]).unwrap();
+        drop(enc.bits.file.take());
+        assert_eq!(fs::metadata(&path).unwrap().len(), 0);
+
+        let mut dec = CodingPara::new();
+        dec.bits.open_read(path.to_str().unwrap()).unwrap();
+        assert_eq!(rice_decoding(&mut dec, 0, &[0, 0, 0]).unwrap(), 0);
+    }
+
+    #[test]
+    fn unsupported_bit_length_is_rejected() {
+        let path = temp_path("rice_bad_len.bin");
+        let mut coding = CodingPara::new();
+        coding.bits.open_write(path.to_str().unwrap()).unwrap();
+        assert!(rice_coding(&mut coding, 0, 5, &[0, 0, 0]).is_err());
+        assert!(rice_decoding(&mut coding, 5, &[0, 0, 0]).is_err());
+    }
+
+    #[test]
+    fn unsupported_option_is_rejected() {
+        let path = temp_path("rice_bad_opt.bin");
+        let mut coding = CodingPara::new();
+        coding.bits.open_write(path.to_str().unwrap()).unwrap();
+        assert!(rice_coding(&mut coding, 0, 2, &[2, 0, 0]).is_err());
+        assert!(rice_coding(&mut coding, 0, 4, &[0, 0, 4]).is_err());
+    }
+
+    #[test]
+    fn out_of_range_value_is_rejected() {
+        let path = temp_path("rice_out_of_range.bin");
+        let mut coding = CodingPara::new();
+        coding.bits.open_write(path.to_str().unwrap()).unwrap();
+        assert!(rice_coding(&mut coding, 8, 3, &[0, 0, 0]).is_err());
+        assert!(rice_coding(&mut coding, 16, 4, &[0, 0, 0]).is_err());
+    }
+
+    #[test]
+    fn exhaustive_search_picks_zero_for_small_values() {
+        let mapped = vec![0u32; GAGGLE_SIZE];
+        let k = select_rice_k(&mapped, 0, GAGGLE_SIZE, 8, 6, true);
+        assert_eq!(k, 0);
+    }
+
+    #[test]
+    fn exhaustive_search_falls_back_to_uncoded() {
+        // Every value needs the full word width, so no k can beat uncoded output.
+        let mapped = vec![0xFFu32; GAGGLE_SIZE];
+        let k = select_rice_k(&mapped, 0, GAGGLE_SIZE, 8, 6, true);
+        assert_eq!(k, UNCODED_FLAG);
+    }
+
+    #[test]
+    fn exhaustive_search_stays_within_max_k() {
+        let mapped: Vec<u32> = (0..GAGGLE_SIZE as u32).map(|i| i * 3).collect();
+        let k = select_rice_k(&mapped, 0, GAGGLE_SIZE, 8, 6, true);
+        assert!(
+            k == UNCODED_FLAG || (0..=6).contains(&k),
+            "unexpected k {}",
+            k
+        );
+    }
+
+    #[test]
+    fn heuristic_picks_zero_for_small_values() {
+        let mapped = vec![0u32; GAGGLE_SIZE];
+        let k = select_rice_k(&mapped, 0, GAGGLE_SIZE, 8, 6, false);
+        assert_eq!(k, 0);
+    }
+
+    #[test]
+    fn heuristic_falls_back_to_uncoded() {
+        let mapped = vec![0xFFu32; GAGGLE_SIZE];
+        let k = select_rice_k(&mapped, 0, GAGGLE_SIZE, 8, 6, false);
+        assert_eq!(k, UNCODED_FLAG);
+    }
+
+    #[test]
+    fn heuristic_k_grows_with_magnitude() {
+        let small: Vec<u32> = vec![4; GAGGLE_SIZE];
+        let large: Vec<u32> = vec![40; GAGGLE_SIZE];
+        let k_small = select_rice_k(&small, 0, GAGGLE_SIZE, 8, 6, false);
+        let k_large = select_rice_k(&large, 0, GAGGLE_SIZE, 8, 6, false);
+        assert!(
+            k_large >= k_small,
+            "k should not shrink as magnitudes grow: {} -> {}",
+            k_small,
+            k_large
+        );
+    }
+}

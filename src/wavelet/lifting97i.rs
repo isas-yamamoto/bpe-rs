@@ -152,14 +152,56 @@ pub fn lifting_m97_2d(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::alloc_image_i32;
+
+    fn sample(n: usize) -> Vec<i32> {
+        (0..n as i32).map(|i| (i * 7 % 23) - 11).collect()
+    }
 
     #[test]
-    fn forward_inverse_small() {
-        let mut data = [1, 2, 3, 4, 5, 6, 7, 8];
-        let orig = data;
-        let mut alloc = vec![0i32; 64];
-        forward_lifting97i(&mut data, 8, &mut alloc);
-        inverse_lifting97i(&mut data, 8, &mut alloc);
-        assert_eq!(data, orig);
+    fn forward_inverse_is_lossless_for_several_lengths() {
+        for n in [8usize, 16, 32, 64] {
+            let mut data = sample(n);
+            let original = data.clone();
+            let mut alloc = vec![0i32; n * 4 + 16];
+            forward_lifting97i(&mut data, n, &mut alloc);
+            assert_ne!(data, original, "transform should change the samples");
+            inverse_lifting97i(&mut data, n, &mut alloc);
+            assert_eq!(data, original, "length {} must round-trip exactly", n);
+        }
+    }
+
+    #[test]
+    fn constant_signal_keeps_detail_bands_at_zero() {
+        let n = 16;
+        let mut data = vec![100i32; n];
+        let mut alloc = vec![0i32; n * 4 + 16];
+        forward_lifting97i(&mut data, n, &mut alloc);
+        assert!(
+            data[n / 2..].iter().all(|&v| v == 0),
+            "a flat signal must not produce detail coefficients: {:?}",
+            data
+        );
+    }
+
+    #[test]
+    fn two_dimensional_transform_is_lossless() {
+        let size = 32;
+        let mut image = alloc_image_i32(size, size);
+        for y in 0..size {
+            for x in 0..size {
+                image[y][x] = ((x * 3 + y * 5) % 251) as i32 - 125;
+            }
+        }
+        let original = image.clone();
+        lifting_m97_2d(&mut image, size, size, 3, false).unwrap();
+        lifting_m97_2d(&mut image, size, size, 3, true).unwrap();
+        assert_eq!(image, original);
+    }
+
+    #[test]
+    fn size_not_divisible_by_levels_is_rejected() {
+        let mut image = alloc_image_i32(12, 12);
+        assert!(lifting_m97_2d(&mut image, 12, 12, 3, false).is_err());
     }
 }

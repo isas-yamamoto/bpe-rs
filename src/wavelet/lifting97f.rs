@@ -159,3 +159,63 @@ pub fn lifting_f97_2d(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::alloc_image_f32;
+
+    const TOLERANCE: f32 = 1e-2;
+
+    #[test]
+    fn forward_inverse_restores_samples_within_tolerance() {
+        for n in [8usize, 16, 32] {
+            let mut data: Vec<f32> = (0..n).map(|i| (i as f32) * 1.5 - 10.0).collect();
+            let original = data.clone();
+            let mut alloc = vec![0f32; n * 4 + 32];
+            forward_lifting97f(&mut data, n, &mut alloc);
+            inverse_lifting97f(&mut data, n, &mut alloc);
+            for (got, want) in data.iter().zip(original.iter()) {
+                assert!(
+                    (got - want).abs() < TOLERANCE,
+                    "length {}: got {} want {}",
+                    n,
+                    got,
+                    want
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn two_dimensional_transform_restores_image_within_tolerance() {
+        let size = 16;
+        let mut image = alloc_image_f32(size, size);
+        for y in 0..size {
+            for x in 0..size {
+                image[y][x] = ((x * 5 + y * 3) % 97) as f32;
+            }
+        }
+        let original = image.clone();
+        lifting_f97_2d(&mut image, size, size, 3, false).unwrap();
+        lifting_f97_2d(&mut image, size, size, 3, true).unwrap();
+        for y in 0..size {
+            for x in 0..size {
+                assert!(
+                    (image[y][x] - original[y][x]).abs() < TOLERANCE,
+                    "pixel ({}, {}): got {} want {}",
+                    x,
+                    y,
+                    image[y][x],
+                    original[y][x]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn size_not_divisible_by_levels_is_rejected() {
+        let mut image = alloc_image_f32(12, 12);
+        assert!(lifting_f97_2d(&mut image, 12, 12, 3, false).is_err());
+    }
+}
