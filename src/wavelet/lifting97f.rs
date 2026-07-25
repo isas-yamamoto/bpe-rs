@@ -93,17 +93,27 @@ fn inverse_lifting97f(x: &mut [f32], n: usize, x_alloc: &mut [f32]) {
     let mut out_i = 0usize;
     let mut d_idx = d_base;
     let mut r_idx = r_base;
+    // C: `*x++ = (float)(0.788486 * r[0] - ...)`. The unsuffixed constants
+    // are `double`, so multiplying them against the `float` array elements
+    // promotes the whole sum to double precision; only the final assignment
+    // narrows back to float. Computing this in pure f32 (as a direct
+    // transliteration would) accumulates a small but pervasive per-sample
+    // error relative to C -- usually too small to flip the final `(int)(v +
+    // 0.5)` pixel rounding, but not always: found via a rate-limited,
+    // small-segment decode where it did. Matching C's f64 intermediate
+    // precision here, not just at the final rounding step, closes that gap.
+    let f = |v: f32| v as f64;
     for _ in 0..half {
-        x[out_i] = 0.788486 * x_alloc[r_idx]
-            - 0.0406894 * (x_alloc[r_idx + 1] + x_alloc[r_idx - 1])
-            - 0.023849 * (x_alloc[d_idx + 1] + x_alloc[d_idx - 2])
-            + 0.377403 * (x_alloc[d_idx] + x_alloc[d_idx - 1]);
+        x[out_i] = (0.788486 * f(x_alloc[r_idx])
+            - 0.0406894 * (f(x_alloc[r_idx + 1]) + f(x_alloc[r_idx - 1]))
+            - 0.023849 * (f(x_alloc[d_idx + 1]) + f(x_alloc[d_idx - 2]))
+            + 0.377403 * (f(x_alloc[d_idx]) + f(x_alloc[d_idx - 1]))) as f32;
         out_i += 1;
-        x[out_i] = 0.418092 * (x_alloc[r_idx + 1] + x_alloc[r_idx])
-            - 0.0645389 * (x_alloc[r_idx + 2] + x_alloc[r_idx - 1])
-            - 0.037829 * (x_alloc[d_idx + 2] + x_alloc[d_idx - 2])
-            + 0.110624 * (x_alloc[d_idx + 1] + x_alloc[d_idx - 1])
-            - 0.852699 * x_alloc[d_idx];
+        x[out_i] = (0.418092 * (f(x_alloc[r_idx + 1]) + f(x_alloc[r_idx]))
+            - 0.0645389 * (f(x_alloc[r_idx + 2]) + f(x_alloc[r_idx - 1]))
+            - 0.037829 * (f(x_alloc[d_idx + 2]) + f(x_alloc[d_idx - 2]))
+            + 0.110624 * (f(x_alloc[d_idx + 1]) + f(x_alloc[d_idx - 1]))
+            - 0.852699 * f(x_alloc[d_idx])) as f32;
         out_i += 1;
         d_idx += 1;
         r_idx += 1;

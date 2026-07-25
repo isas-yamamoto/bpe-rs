@@ -44,6 +44,53 @@ pub fn conv_twos_comp(original: i32, leftmost: i16) -> BpeResult<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+
+    /// Cross-checks against verify/vectors/twoscomp_vectors.txt, generated
+    /// by verify/c_unit_tests/gen_twoscomp_vectors.c from the real C
+    /// reference (linked against its actual DC_EnDeCoding.o). Each line is
+    /// `leftmost lo hi csv_of_encoded_values_for_v_in_lo..=hi`.
+    ///
+    /// Ignored by default (like golden_roundtrip.rs) because it needs
+    /// verify/run_unit_vectors.py to have generated the vectors file first;
+    /// that script runs this test with `--include-ignored`.
+    #[test]
+    #[ignore]
+    fn shared_vectors_match_c_reference() {
+        let vectors_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../verify/vectors/twoscomp_vectors.txt");
+        let text = fs::read_to_string(&vectors_path).unwrap_or_else(|e| {
+            panic!(
+                "couldn't read {}: {e} (run verify/run_unit_vectors.py first)",
+                vectors_path.display()
+            )
+        });
+
+        let mut checked = 0;
+        for line in text.lines() {
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            let [leftmost, lo, hi, csv] = fields[..] else {
+                panic!("malformed vector line: {line}");
+            };
+            let leftmost: i16 = leftmost.parse().unwrap();
+            let lo: i32 = lo.parse().unwrap();
+            let hi: i32 = hi.parse().unwrap();
+            let expected: Vec<u32> = csv.split(',').map(|s| s.parse().unwrap()).collect();
+            assert_eq!(expected.len() as i64, hi as i64 - lo as i64 + 1);
+
+            for (i, original) in (lo..=hi).enumerate() {
+                let got = conv_twos_comp(original, leftmost).unwrap();
+                assert_eq!(
+                    got, expected[i],
+                    "leftmost={} original={}: rust produced {} but C reference produced {}",
+                    leftmost, original, got, expected[i]
+                );
+            }
+            checked += 1;
+        }
+        assert!(checked > 0, "vectors file was empty");
+    }
 
     #[test]
     fn roundtrip_over_full_range() {

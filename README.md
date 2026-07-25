@@ -1,6 +1,6 @@
 # BPE Rust (`bpe_rs`)
 
-[![CI](https://github.com/yamamo-to/bpe-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/yamamo-to/bpe-rs/actions/workflows/ci.yml)
+[![CI](https://github.com/isas-yamamoto/bpe-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/isas-yamamoto/bpe-rs/actions/workflows/ci.yml)
 
 `original/source` とビットストリーム互換の純 Rust Bit Plane Encoder。
 

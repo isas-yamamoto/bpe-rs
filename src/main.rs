@@ -163,6 +163,7 @@ fn main() {
         coding.input_file = input;
         coding.coding_output_file = output;
         coding.bits_per_pixel = bpp;
+        coding.pixel_byte_order = byte_order;
 
         if let Err(e) = decoder_engine(&mut coding) {
             error_exit(e);

@@ -50,8 +50,21 @@ fn decoding_output_integer(coding: &mut CodingPara, img: &mut ImageI32) -> BpeRe
 fn decoding_output_floating(coding: &mut CodingPara, img: &mut ImageF32) -> BpeResult<()> {
     let rows = coding.image_rows as usize;
     let cols = (coding.image_width + coding.pad_cols_3bits as u32) as usize;
+    crate::trace::dump_f32_flat(
+        "reassembled_rust.txt",
+        img[..rows]
+            .iter()
+            .flat_map(|row| row[..cols].iter().copied()),
+    );
     coeff_degroup_floating(img, rows, cols);
     dwt_reverse_floating(img, coding)?;
+    let width = coding.image_width as usize;
+    crate::trace::dump_f32_flat(
+        "post_idwt_rust.txt",
+        img[..rows]
+            .iter()
+            .flat_map(|row| row[..width].iter().copied()),
+    );
 
     if coding.header.part4.transpose_img == TRANSPOSE {
         let width = coding.image_width as usize;
@@ -79,6 +92,12 @@ fn decode_one_segment(coding: &mut CodingPara) -> BpeResult<SegmentBlocks> {
     dc_decoding(coding, &freq, &floatv, &mut block_info)?;
     ac_bpe_decoding(coding, &mut block_info)?;
     adjust_output(coding, &mut block_info)?;
+    crate::trace::append_f32_flat(
+        "adjust_output_rust.txt",
+        block_info
+            .iter()
+            .flat_map(|b| b.block_float.iter().flat_map(|row| row.iter().copied())),
+    );
 
     // Copy the decoded coefficients back into the segment storage (in C this
     // happens through the aliased PtrBlockAddress pointers).
@@ -156,6 +175,8 @@ pub fn decoder_engine(coding: &mut CodingPara) -> BpeResult<()> {
 
     let mut segments: Vec<SegmentBlocks> = Vec::new();
     let mut total_blocks: usize = 0;
+
+    crate::trace::truncate_trace_file("adjust_output_rust.txt");
 
     loop {
         total_blocks += coding.header.part3.s_20bits as usize;
