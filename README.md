@@ -14,11 +14,28 @@
 
 ## アルゴリズムの読み方
 
-学生向けの流れ・用語の解説と図（Mermaid）は次を参照してください。
+初心者向けは **具体例（walkthrough）** から読んでください。数値で感覚をつかんでから、学習ストーリーの各章へ進みます。
 
-- **[docs/algorithm_ja.md](docs/algorithm_ja.md)** — 全体マップ
-- **[docs/steps_ja.md](docs/steps_ja.md)** — 段階ごとのステップ解説
-- **[docs/verify_ja.md](docs/verify_ja.md)** — CLI / `cargo test` / ゴールデンでの検証
+- **[docs/walkthrough_ja.md](docs/walkthrough_ja.md)** — 具体例で追う（初心者必読・20〜30分）
+- **[docs/learn_ja.md](docs/learn_ja.md)** — 学習ストーリー（章の一覧）
+- **[docs/glossary_ja.md](docs/glossary_ja.md)** — 用語集
+- **[docs/entropy_coding_ja.md](docs/entropy_coding_ja.md)** — なぜエントロピー符号化と呼ぶのか
+- **[docs/code_reading_ja.md](docs/code_reading_ja.md)** — 実装を読み解くガイド（ソースの地図）
+
+地図・詳解は次の通り（ストーリー順）:
+
+0. [walkthrough_ja.md](docs/walkthrough_ja.md) — 具体例で追う（必読）
+1. [algorithm_ja.md](docs/algorithm_ja.md) — 全体地図
+2. [steps_ja.md](docs/steps_ja.md) — パイプラインの歩き方
+3. [lifting97_ja.md](docs/lifting97_ja.md) — 画像を周波数へ（DWT）
+4. [coeff_group_ja.md](docs/coeff_group_ja.md) — 8x8 の木に組む
+5. [header_bitstream_ja.md](docs/header_bitstream_ja.md) — ビットの入れ物
+6. [dc_coding_ja.md](docs/dc_coding_ja.md) — まず大まかな明るさ（DC）
+7. [rice_ja.md](docs/rice_ja.md) — 共通の圧縮道具（Rice）
+8. [block_scan_ja.md](docs/block_scan_ja.md) — ブロックを森状に走査
+9. [ac_stages_ja.md](docs/ac_stages_ja.md) — 細かい係数を重いビットから
+10. [adjust_ja.md](docs/adjust_ja.md) — 途中で止まったとき
+11. [verify_ja.md](docs/verify_ja.md) — 手を動かして確かめる
 
 要約（エンコード）:
 

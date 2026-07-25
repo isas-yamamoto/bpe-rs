@@ -1,7 +1,31 @@
-# BPE 段階別ステップ解説（学生向け）
+# BPE 段階別ステップ解説
+
+<!-- story-nav:start -->
+
+| | | |
+|---|:---:|---|
+| ← 前: [全体地図](algorithm_ja.md) | **学習ストーリー** · 第 2 / 11 章 · [入口](learn_ja.md) | 次: [画像を周波数へ](lifting97_ja.md) → |
+
+<!-- story-nav:end -->
+
+## この章の結論
+
+**各段階は「目的・入出力・関数」で追えば、実装を読む地図になります。**
+
+用語: [用語集](glossary_ja.md)
+
+## 絵で見る
+
+```text
+encoder_engine
+  パディング -> DWT -> ブロック列
+       -> [セグメント] DC -> AC
+```
+
+## 詳細
 
 この文書は、各アルゴリズムを **何をするか→どの順番か→どの関数か** で追えるように書いています。
-全体地図は [algorithm_ja.md](algorithm_ja.md)、検証方法は [verify_ja.md](verify_ja.md) を参照してください。
+学習ストーリーは [learn_ja.md](learn_ja.md)、全体地図は [algorithm_ja.md](algorithm_ja.md)、検証方法は [verify_ja.md](verify_ja.md) を参照してください。
 
 ---
 
@@ -34,6 +58,12 @@
 5. セグメントごとに `dc_encoding` → `ac_bpe_encoding`
 6. バッファを flush してファイルを確定
 
+> **コラム — なぜ 8 の倍数なのか？**
+>
+> DWT を 3 レベル行うと画像は \(1/8\) まで半分になります（\(2^3=8\)）。
+> さらに符号化の基本単位が **8x8 ブロック**（親・子・孫の木）だからです。
+> 詳しい話は [lifting97_ja.md](lifting97_ja.md) のコラムを参照してください。
+
 ### ソース
 - [`src/encoder.rs`](../src/encoder.rs) — `encoder_engine`, `prepare_last_segment_header`, `build_block_string`
 - [`src/main.rs`](../src/main.rs) — CLI 引数解析
@@ -53,15 +83,24 @@
 - 出力: 変換後の係数画像（同サイズ）
 
 ### ステップ
-1. `-t 1` なら **整数 9/7**、`-t 0` なら **浮動小数 9/7** を選ぶ
+1. CLI の `-t` で **どの実装で変換するか** を選ぶ
+   - `-t 1`（デフォルト）: **整数精度の 9/7 リフティング**（`lifting97i`）。入力・係数とも整数のまま計算するので、変換自体は可逆
+   - `-t 0`: **浮動小数精度の 9/7**（`lifting97f`）。実数演算で分解するので、変換だけでも復元に微小な誤差が出る
 2. 行方向・列方向にリフティングを適用（多段階）
 3. 後でブロック単位に並べ替えやすい形にする（グルーピング関連）
+
+ここでいう **9/7** はフィルタの名前で、低周波側 9 点・高周波側 7 点の係数を使う意味です（JPEG 2000 でも使われる CDF 9/7 系）。
+`-t` は「9/7 を使うか否か」ではなく、**同じ 9/7 を整数演算でやるか、実数演算でやるか** の切り替えです。
+
+式・段数・験証手順の詳細は [lifting97_ja.md](lifting97_ja.md) を参照してください。
 
 ### ソース
 - [`src/wavelet/mod.rs`](../src/wavelet/mod.rs) — `dwt_forward` / `dwt_reverse`
 - [`src/wavelet/lifting97i.rs`](../src/wavelet/lifting97i.rs) — 整数
 - [`src/wavelet/lifting97f.rs`](../src/wavelet/lifting97f.rs) — 浮動小数
 - [`src/wavelet/coeff_group.rs`](../src/wavelet/coeff_group.rs) — 係数の組替え
+
+並べ替えの詳細は [coeff_group_ja.md](coeff_group_ja.md)。
 
 ### 対になるデコード
 - `dwt_reverse` / `dwt_reverse_floating`（デコード後半）
@@ -81,6 +120,8 @@
 1. **統計収集** — セグメント内の DC/AC 振幅の最大・最小を調べる（`collect_segment_dc_ac_stats`）
 2. **ビット深度** — DC/AC が何ビット必要かを決める（`derive_bit_depth_*`）
 3. **ヘッダ出力** — 後続のデコーダが知るべきパラメータを書く
+
+ヘッダ・ビット I/O の詳細は [header_bitstream_ja.md](header_bitstream_ja.md)。
 4. **量子化** — `q` を決め、DC を右シフト（`apply_dc_quantization`）。低位は残差として後で AC プレーンと一緒に出すことがある
 5. **DPCM** — 隣接 DC との差分を非負整数に写像（`dpcm_dc_mapper`）
 6. **エントロピー** — ガッグル単位で Rice パラメータ `k` を選び、ビット列を出力（`dc_entropy_encoder` / `select_rice_k`）
@@ -90,6 +131,8 @@
 - [`src/dc/dpcm.rs`](../src/dc/dpcm.rs), [`src/dc/entropy.rs`](../src/dc/entropy.rs), [`src/dc/twos_comp.rs`](../src/dc/twos_comp.rs)
 - [`src/rice.rs`](../src/rice.rs) — `select_rice_k`
 
+詳細は [dc_coding_ja.md](dc_coding_ja.md) / [rice_ja.md](rice_ja.md) を参照してください。
+
 ### 対になるデコード
 - 逆順: エントロピー解読 → DPCM demap → （追加プレーン） → 逆量子化
 
@@ -98,7 +141,8 @@
 ## 4. AC ビットプレーンループ
 
 ### 目的
-DC 以外の係数を、**MSB から LSB へ** プレーンごとに送る。
+DC 以外の **整数係数** を、振幅の **重いビットから軽いビットへ** プレーンごとに送る。
+（浮動小数 DWT でも、丸め後の整数に対する操作です。IEEE 浮動小数のビット列ではありません。詳細は [algorithm_ja.md](algorithm_ja.md) の注意を参照。）
 
 ### 入力 / 出力
 - 入力: ブロック係数、AC 深度、量子化残差
@@ -142,6 +186,8 @@ DC 以外の係数を、**MSB から LSB へ** プレーンごとに送る。
 ### ソース
 - [`src/block.rs`](../src/block.rs) — `scan_type_p`, `scan_tran_b`, ... `block_scan_encode`
 
+詳細は [block_scan_ja.md](block_scan_ja.md)。
+
 ### 対になるデコード
 - ステージ解読（`stages/gaggles*.rs`）がシンボルから係数位置へ値を書き戻す
 
@@ -172,6 +218,8 @@ DC 以外の係数を、**MSB から LSB へ** プレーンごとに送る。
 - [`src/pattern/options.rs`](../src/pattern/options.rs), [`mapping.rs`](../src/pattern/mapping.rs)
 - [`src/rice.rs`](../src/rice.rs) — `rice_coding` / `rice_decoding`
 
+詳細は [ac_stages_ja.md](ac_stages_ja.md) / [rice_ja.md](rice_ja.md) を参照してください。
+
 ---
 
 ## 7. デコード後半（補正・逆変換）
@@ -187,6 +235,8 @@ DC 以外の係数を、**MSB から LSB へ** プレーンごとに送る。
 
 ### ソース
 - [`src/adjust.rs`](../src/adjust.rs)
+
+詳細は [adjust_ja.md](adjust_ja.md)。
 - [`src/decoder.rs`](../src/decoder.rs) — `reassemble_images`, `decoding_output_*`
 
 ---
@@ -202,3 +252,22 @@ DC 以外の係数を、**MSB から LSB へ** プレーンごとに送る。
 | デコード対称性 | 同名の `*_decoding` / `stages_de_*` |
 
 検証の具体手順は [verify_ja.md](verify_ja.md) へ。
+
+<!-- story-checkpoint:start -->
+
+## この章のあとで分かること
+
+- [ ] 各段階の「目的 / 入力 / 出力」を言える
+- [ ] 読むべき主要ファイル名を挙げられる
+- [ ] エンコードとデコードの対応関係が見える
+
+満足したら、下の「次へ」へ進んでください。
+
+<!-- story-checkpoint:end -->
+<!-- story-nav:start -->
+
+| | | |
+|---|:---:|---|
+| ← 前: [全体地図](algorithm_ja.md) | **学習ストーリー** · 第 2 / 11 章 · [入口](learn_ja.md) | 次: [画像を周波数へ](lifting97_ja.md) → |
+
+<!-- story-nav:end -->
