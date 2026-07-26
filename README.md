@@ -70,7 +70,6 @@ Encoding and decoding are pure Rust; there is no C FFI or `c_bridge`.
 
 - `main` — stable. Tagged releases (`v*`) are cut here.
 - `develop` — day-to-day development. Merged into `main` once stable, then tagged.
-- `archive/pre-public` — development record from before the history cleanup (reference only).
 
 ## CI / CD
 
