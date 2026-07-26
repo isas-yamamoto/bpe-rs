@@ -2,7 +2,7 @@
 name = "bpe_rs"
 version = "0.1.0"
 edition = "2021"
-description = "Bit Plane Encoder - Rust port compatible with original/source"
+description = "Bit Plane Encoder - pure Rust, bitstream-compatible with the C reference implementation"
 license = "Unlicense"
 
 [[bin]]
