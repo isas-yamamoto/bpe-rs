@@ -1,0 +1,28 @@
+NOTICE
+======
+
+This project implements the image data compression scheme described in:
+
+  CCSDS 122.0 Recommended Standard
+  (Image Data Compression)
+  https://public.ccsds.org/
+
+Compatibility of the produced bitstream was verified against the
+C language reference implementation developed by Hongqiang Wang at
+the University of Nebraska-Lincoln (UNL), historically distributed
+from http://hyperspectral.unl.edu/
+
+  Author: Hongqiang Wang
+  Department of Electrical Engineering
+  University of Nebraska-Lincoln
+
+That UNL software is subject to its own license agreement (copyright
+University of Nebraska / Board of Regents of the University of Nebraska).
+This repository does not redistribute the UNL source code. The UNL
+license agreement is not the license of this repository; the final
+license for this Rust codebase is still under review.
+
+This notice is for attribution and provenance only. It does not grant
+any rights beyond those of the license that will be chosen for this
+project, and it does not replace the UNL license for the original
+C implementation.
