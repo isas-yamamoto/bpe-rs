@@ -102,7 +102,7 @@ flowchart LR
 | 3 | `option[1]=0,1,3` | 0/1 は変長、3 は 3 ビット固定 |
 | 4 | `option[2]=0,1,2,3` | 0〜2 は変長、3 は 4 ビット固定 |
 
-表の具体ビット列は [`src/rice.rs`](../src/rice.rs) の `match` が正本です。
+表の具体ビット列は [`src/rice/encode.rs`](../src/rice/encode.rs) / [`decode.rs`](../src/rice/decode.rs) の `match` が正本です。
 ユニットテストが **全オプション × 全値** で encode→decode を回し、符号表を固定化しています。
 
 ### `coding_options` の選び方
@@ -150,7 +150,7 @@ DC は次の順で処理されます。
 ### 出力形式（`dc_encoder`）
 
 ```text
-1. bits_output(k, id_length)
+1. bits_write(k, id_length)
 2. 各ブロック i:
    - k == UNCODED または i == 0  →  mapped_dc を n ビットで出力
    - その他               →  ユニタリ (mapped_dc >> k) + 1 個の 1
@@ -181,7 +181,7 @@ DC は次の順で処理されます。
 3. `k = n - 2`
 4. その他（スキャンで決定）
 
-を選びます。係数は `HEUR_*` 定数として `rice.rs` に名前付けされています。
+を選びます。係数は `HEUR_*` 定数として `rice/select_k.rs` に名前付けされています。
 
 ---
 
@@ -189,8 +189,8 @@ DC は次の順で処理されます。
 
 | 役割 | ファイル / 関数 |
 |------|----------------|
-| シンボル Rice 本体 | `src/rice.rs` — `rice_coding` / `rice_decoding` |
-| `k` 選択 | `src/rice.rs` — `select_rice_k`, `UNCODED_FLAG` |
+| シンボル Rice 本体 | `src/rice/encode.rs` / `decode.rs` — `rice_coding` / `rice_decoding` |
+| `k` 選択 | `src/rice/select_k.rs` — `select_rice_k`, `UNCODED_FLAG` |
 | DC エントロピー | `src/dc/entropy.rs` — `dc_entropy_encoder` / `dc_entropy_decoder` |
 | AC depth（類似） | `src/ac/depth.rs` |
 | オプション選択 | `src/pattern/options.rs` — `coding_options` |

@@ -95,7 +95,7 @@ encoder_engine
 式・段数・験証手順の詳細は [lifting97_ja.md](lifting97_ja.md) を参照してください。
 
 ### ソース
-- [`src/wavelet/mod.rs`](../src/wavelet/mod.rs) — `dwt_forward` / `dwt_reverse`
+- [`src/wavelet/orchestrate.rs`](../src/wavelet/orchestrate.rs) — `dwt_forward` / `dwt_reverse`
 - [`src/wavelet/lifting97i.rs`](../src/wavelet/lifting97i.rs) — 整数
 - [`src/wavelet/lifting97f.rs`](../src/wavelet/lifting97f.rs) — 浮動小数
 - [`src/wavelet/coeff_group.rs`](../src/wavelet/coeff_group.rs) — 係数の組替え
@@ -129,7 +129,7 @@ encoder_engine
 ### ソース
 - [`src/dc/coding.rs`](../src/dc/coding.rs) — `dc_encoding` / `dc_decoding`
 - [`src/dc/dpcm.rs`](../src/dc/dpcm.rs), [`src/dc/entropy.rs`](../src/dc/entropy.rs), [`src/dc/twos_comp.rs`](../src/dc/twos_comp.rs)
-- [`src/rice.rs`](../src/rice.rs) — `select_rice_k`
+- [`src/rice/select_k.rs`](../src/rice/select_k.rs) — `select_rice_k`
 
 詳細は [dc_coding_ja.md](dc_coding_ja.md) / [rice_ja.md](rice_ja.md) を参照してください。
 
@@ -184,7 +184,7 @@ DC 以外の **整数係数** を、振幅の **重いビットから軽いビ�
 6. すでに有意だった係数は、このプレーンでは refine ビットとして別途累積
 
 ### ソース
-- [`src/block.rs`](../src/block.rs) — `scan_type_p`, `scan_tran_b`, ... `block_scan_encode`
+- [`src/block/`](../src/block/) — `scan_type_p`, `scan_tran_b`, ... `block_scan_encode`
 
 詳細は [block_scan_ja.md](block_scan_ja.md)。
 
@@ -216,7 +216,7 @@ DC 以外の **整数係数** を、振幅の **重いビットから軽いビ�
 - [`src/stages/orchestrate.rs`](../src/stages/orchestrate.rs)
 - [`src/stages/gaggles1.rs`](../src/stages/gaggles1.rs) ... `gaggles3.rs`, [`refine.rs`](../src/stages/refine.rs)
 - [`src/pattern/options.rs`](../src/pattern/options.rs), [`mapping.rs`](../src/pattern/mapping.rs)
-- [`src/rice.rs`](../src/rice.rs) — `rice_coding` / `rice_decoding`
+- [`src/rice/encode.rs`](../src/rice/encode.rs) / [`decode.rs`](../src/rice/decode.rs) — `rice_coding` / `rice_decoding`
 
 詳細は [ac_stages_ja.md](ac_stages_ja.md) / [rice_ja.md](rice_ja.md) を参照してください。
 
@@ -234,7 +234,7 @@ DC 以外の **整数係数** を、振幅の **重いビットから軽いビ�
 4. （必要なら）転置を戻し、RAW 出力
 
 ### ソース
-- [`src/adjust.rs`](../src/adjust.rs)
+- [`src/adjust/`](../src/adjust/)
 
 詳細は [adjust_ja.md](adjust_ja.md)。
 - [`src/decoder.rs`](../src/decoder.rs) — `reassemble_images`, `decoding_output_*`
@@ -248,7 +248,7 @@ DC 以外の **整数係数** を、振幅の **重いビットから軽いビ�
 | 最初の入口 | `encoder_engine` を上から通読 |
 | DC だけ | `dc_encoding` の呼び出し列 |
 | 1 プレーン | `encode_one_bitplane` → `block_scan_encode` → `stages_en_coding` |
-| シンボル種類 | `block.rs` の `scan_*` と `stages/gaggles*.rs` を並べて読む |
+| シンボル種類 | `block/` の `scan_*` と `stages/gaggles*.rs` を並べて読む |
 | デコード対称性 | 同名の `*_decoding` / `stages_de_*` |
 
 検証の具体手順は [verify_ja.md](verify_ja.md) へ。

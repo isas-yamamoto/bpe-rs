@@ -9,8 +9,9 @@ BPE 文書で使う用語の定義集です。
 
 ## A〜C
 
-### AC
+### AC（Alternating Current）
 8x8 ブロックのうち、**DC 以外の係数**（親・子・孫）。細かい変化を表す。
+名前は電気の「交流」からの比喩。概念と符号化: [ac_stages_ja.md](ac_stages_ja.md)。
 
 ### adjust_output
 レート制限で復号が途中停止したとき、未確定係数を不確定区間の中点へ寄せる処理。復号側のみ。
@@ -27,13 +28,14 @@ IEEE 754 浮動小数のビット列ではない。
 
 ## D〜H
 
-### DC
+### DC（Direct Current）
 8x8 ブロック左上の係数（LL3）。その場所の **大まかな明るさ**。
+名前は電気の「直流」からの比喩。概念と符号化: [dc_coding_ja.md](dc_coding_ja.md)。
 
-### DPCM
+### DPCM（Differential Pulse Code Modulation）
 隣接値との **差分** を取る方式。DC では `shifted_dc` の差を非負整数へ写像してから Rice する。
 
-### DWT（離散ウェーブレット変換）
+### DWT（Discrete Wavelet Transform / 離散ウェーブレット変換）
 画像を **低周波（大まかな形）** と **高周波（細かい差）** に分解する変換。
 BPE は 3 レベル固定。
 

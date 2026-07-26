@@ -5,7 +5,7 @@
 //!   2. block_scan_encode (encode) / stages decode (decode)
 //!   3. stages_en_coding (encode)
 
-use crate::bitstream::{bits_output, bits_read};
+use crate::bitstream::{bits_read, bits_write};
 use crate::block::block_scan_encode;
 use crate::error::BpeResult;
 use crate::stages::{stages_de_coding, stages_en_coding};
@@ -30,7 +30,7 @@ fn encode_one_bitplane(
 ) -> BpeResult<()> {
     if dc_remainder_plane_active(coding, bit_plane) {
         for i in 0..s {
-            bits_output(
+            bits_write(
                 coding,
                 ((block_info[i].dc_remainder >> (bit_plane - 1)) & 0x01) as u32,
                 1,
@@ -83,7 +83,7 @@ pub fn ac_bpe_encoding(coding: &mut CodingPara, block_info: &mut [BitPlaneBits])
 
         if coding.header.part1.bit_depth_ac_5bits == 1 {
             for i in 0..s {
-                bits_output(coding, block_info[i].bit_max_ac as u32, 1)?;
+                bits_write(coding, block_info[i].bit_max_ac as u32, 1)?;
             }
         } else {
             ac_depth_encoder(coding, block_info)?;

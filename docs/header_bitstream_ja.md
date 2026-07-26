@@ -80,11 +80,11 @@
 
 ## 2. ビットストリーム I/O
 
-[`src/bitstream.rs`](../src/bitstream.rs)
+[`src/bitstream/`](../src/bitstream/)
 
 | 関数 | 役割 |
 |------|------|
-| `bits_output` | MSB から 1 bit ずつ書き込み |
+| `bits_write` | MSB から 1 bit ずつ書き込み |
 | `bits_read` | 同様に読み出し |
 | `segment_buffer_flush_encoder` | コードワード境界へパディング、必要なら fill |
 
@@ -107,7 +107,7 @@ cargo test bitstream::
 ## この章のあとで分かること
 
 - [ ] Part1〜4 が何を伝えるかを説明できる
-- [ ] `bits_output` / `bits_read` の役割が分かる
+- [ ] `bits_write` / `bits_read` の役割が分かる
 - [ ] `segment_full` と `rate_reached` の意味を言える
 
 満足したら、下の「次へ」へ進んでください。

@@ -3,7 +3,7 @@
 //! Encode stages: collect stats -> bit depths -> header -> quantize -> DPCM -> entropy.
 //! Decode stages: load blocks -> quantize params -> entropy/DPCM -> extra planes -> dequantize.
 
-use crate::bitstream::{bits_output, bits_read};
+use crate::bitstream::{bits_read, bits_write};
 use crate::error::BpeResult;
 use crate::types::{amplitude, BitPlaneBits, BlockString, CodingPara, BLOCK_SIZE, INTEGER_WAVELET};
 
@@ -225,7 +225,7 @@ pub fn dc_encoding(
 
     if coding.n == 1 {
         for i in 0..s {
-            bits_output(coding, block_info[i].shifted_dc, 1)?;
+            bits_write(coding, block_info[i].shifted_dc, 1)?;
         }
         return Ok(());
     }

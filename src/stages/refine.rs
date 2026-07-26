@@ -3,7 +3,7 @@
 //! After stage symbols: encode/decode parent, children, grandchildren refinement bits.
 
 use super::common::{apply_refine_delta, mark_stop_at, rate_stop_pending};
-use crate::bitstream::{bits_output, bits_read};
+use crate::bitstream::{bits_read, bits_write};
 use crate::error::BpeResult;
 use crate::types::{BitPlaneBits, CodingPara};
 
@@ -177,7 +177,7 @@ pub(super) fn ref_bits_en(
     let s = coding.header.part3.s_20bits as usize;
     for i in 0..s {
         if block_info[i].refine_bits.refine_parent.parent_symbol_length > 0 {
-            bits_output(
+            bits_write(
                 coding,
                 block_info[i].refine_bits.refine_parent.parent_ref_symbol as u32,
                 block_info[i].refine_bits.refine_parent.parent_symbol_length as i32,
@@ -192,7 +192,7 @@ pub(super) fn ref_bits_en(
             .children_symbol_length
             > 0
         {
-            bits_output(
+            bits_write(
                 coding,
                 block_info[i]
                     .refine_bits
@@ -215,7 +215,7 @@ pub(super) fn ref_bits_en(
 
         for j in 0..3usize {
             if block_info[i].refine_bits.refine_grand_children[j].grand_children_symbol_length > 0 {
-                bits_output(
+                bits_write(
                     coding,
                     block_info[i].refine_bits.refine_grand_children[j].grand_children_ref_symbol
                         as u32,

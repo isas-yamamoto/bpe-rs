@@ -1,6 +1,6 @@
 //! AC bit-depth gaggle encoding/decoding - original/source/AC_BitPlaneCoding.c
 
-use crate::bitstream::{bits_output, bits_read};
+use crate::bitstream::{bits_read, bits_write};
 use crate::error::{BpeError, BpeResult};
 use crate::rice::{select_rice_k, UNCODED_FLAG};
 use crate::types::{BitPlaneBits, CodingPara, GAGGLE_SIZE};
@@ -25,18 +25,18 @@ fn ac_gaggle_encoding(
         coding.header.part3.opt_dc_select,
     );
 
-    bits_output(coding, min_k as u32, id_length)?;
+    bits_write(coding, min_k as u32, id_length)?;
 
     for i in start_index..(start_index + gaggles) {
         if (min_k == UNCODED_FLAG) || (i == 0) {
-            bits_output(coding, block_info[i].mapped_ac as u32, coding.n as i32)?;
+            bits_write(coding, block_info[i].mapped_ac as u32, coding.n as i32)?;
         } else {
-            bits_output(coding, 1, ((block_info[i].mapped_ac as i32) >> min_k) + 1)?;
+            bits_write(coding, 1, ((block_info[i].mapped_ac as i32) >> min_k) + 1)?;
         }
     }
     if min_k != UNCODED_FLAG {
         for i in start_index.max(1)..(start_index + gaggles) {
-            bits_output(coding, block_info[i].mapped_ac as u32, min_k)?;
+            bits_write(coding, block_info[i].mapped_ac as u32, min_k)?;
         }
     }
     Ok(())

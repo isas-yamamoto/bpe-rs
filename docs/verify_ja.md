@@ -67,8 +67,8 @@ cargo test
 
 | 場所 | 見ていること |
 |------|--------------|
-| `rice.rs` | Rice 符号表を `bit_length` 1..4 × 全オプション × 全値で往復させ、`select_rice_k` の k 選択 |
-| `bitstream.rs` | ビット入出力の往復、パディング、セグメント上限と `rate_reached` の挙動 |
+| `rice/` | Rice 符号表を `bit_length` 1..4 × 全オプション × 全値で往復させ、`select_rice_k` の k 選択 |
+| `bitstream/` | ビット入出力の往復、パディング、セグメント上限と `rate_reached` の挙動 |
 | `dc/twos_comp.rs` | 2 の補数変換の往復と不正幅の拒絶 |
 | `dc/dpcm.rs` | DPCM 写像→逆写像で `shifted_dc` が戻ること |
 | `dc/coding.rs` | DC/AC ビット深度の導出と量子化係数の分岐 |

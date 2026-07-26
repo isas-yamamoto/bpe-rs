@@ -1,122 +1,10 @@
-//! Image I/O — ImageSize/Read/Write in bpe_encoder.c / bpe_decoder.c
+//! Raw image output — `ImageWrite` in bpe_decoder.c (integer and float paths).
 
 use crate::error::{BpeError, BpeResult};
-use crate::types::{alloc_image_i32, CodingPara, ImageF32, ImageI32};
-use std::fs::{metadata, File};
-use std::io::{Read, Write};
-
-/// Determine (or validate) image rows/width from file size.
-pub fn image_size(coding: &mut CodingPara) -> BpeResult<()> {
-    let img_len = metadata(&coding.input_file)
-        .map_err(|_| BpeError::FileError)?
-        .len();
-
-    if coding.image_rows > 0 && coding.image_width > 0 {
-        let depth = coding.header.part4.pixel_bit_depth_4bits;
-        let temp: u64 = if depth == 0 || depth > 8 { 16 } else { 8 };
-        if img_len == coding.image_rows as u64 * coding.image_width as u64 * temp / 8 {
-            return Ok(());
-        }
-        return Err(BpeError::FileError);
-    }
-
-    match img_len {
-        16384 => {
-            coding.image_rows = 128;
-            coding.image_width = 128;
-        }
-        64000 => {
-            coding.image_rows = 200;
-            coding.image_width = 320;
-        }
-        65536 => {
-            coding.image_rows = 256;
-            coding.image_width = 256;
-        }
-        98304 => {
-            coding.image_rows = 256;
-            coding.image_width = 384;
-        }
-        196608 => {
-            coding.image_rows = 512;
-            coding.image_width = 384;
-        }
-        262144 => {
-            coding.image_rows = 512;
-            coding.image_width = 512;
-        }
-        307200 => {
-            coding.image_rows = 480;
-            coding.image_width = 640;
-        }
-        345600 => {
-            coding.image_rows = 720;
-            coding.image_width = 480;
-        }
-        414720 => {
-            coding.image_rows = 576;
-            coding.image_width = 720;
-        }
-        524288 => {
-            coding.image_rows = 512;
-            coding.image_width = 512;
-            coding.header.part4.pixel_bit_depth_4bits = 0;
-        }
-        _ => return Err(BpeError::FileError),
-    }
-
-    let depth = coding.header.part4.pixel_bit_depth_4bits as u64;
-    if coding.image_rows as u64 * coding.image_width as u64 * depth / 8 != img_len {
-        return Err(BpeError::FileError);
-    }
-    Ok(())
-}
-
-/// Read the raw image (unpadded) into an rows x width array.
-pub fn image_read(coding: &CodingPara) -> BpeResult<ImageI32> {
-    let mut file = File::open(&coding.input_file).map_err(|_| BpeError::FileError)?;
-    let rows = coding.image_rows as usize;
-    let cols = coding.image_width as usize;
-    let mut image = alloc_image_i32(rows, cols);
-    let depth = coding.header.part4.pixel_bit_depth_4bits;
-    let signed = coding.header.part4.signed_pixels;
-
-    if depth != 0 && depth <= 8 {
-        let mut rowbuf = vec![0u8; cols];
-        for r in 0..rows {
-            file.read_exact(&mut rowbuf)
-                .map_err(|_| BpeError::FileError)?;
-            for i in 0..cols {
-                image[r][i] = if signed {
-                    rowbuf[i] as i8 as i32
-                } else {
-                    rowbuf[i] as i32
-                };
-            }
-        }
-    } else {
-        let mut rowbuf = vec![0u8; cols * 2];
-        for r in 0..rows {
-            file.read_exact(&mut rowbuf)
-                .map_err(|_| BpeError::FileError)?;
-            for i in 0..cols {
-                let v = u16::from_le_bytes([rowbuf[i * 2], rowbuf[i * 2 + 1]]);
-                image[r][i] = if signed { v as i16 as i32 } else { v as i32 };
-            }
-        }
-        // Kiely endian fix: swap when image byte order differs from the host.
-        let machineendianness: u8 = 0; // little-endian host
-        if coding.pixel_byte_order != machineendianness {
-            for r in 0..rows {
-                for i in 0..cols {
-                    let v = image[r][i];
-                    image[r][i] = (v >> 8) + ((v << 8) & 0xFF00);
-                }
-            }
-        }
-    }
-    Ok(image)
-}
+use crate::image_io::common::{byte_order_differs, maybe_byte_swap};
+use crate::types::{CodingPara, ImageF32, ImageI32};
+use std::fs::File;
+use std::io::Write;
 
 /// Clamp + convert one 8-bit pixel (integer path).
 fn clamp_u8_i32(v: i32, signed: bool) -> u8 {
@@ -182,15 +70,6 @@ fn pixel_limits_16(depth: u8, signed: bool) -> (i32, i32) {
     }
 }
 
-/// Optional endian swap: `((v << 8) & 0xFF00) + (v >> 8)`.
-fn maybe_byte_swap(v: i32, swap: bool) -> i32 {
-    if swap {
-        ((v << 8) & 0xFF00) + (v >> 8)
-    } else {
-        v
-    }
-}
-
 /// Emit rows of already-converted 8-bit samples.
 fn write_u8_rows(
     file: &mut File,
@@ -240,8 +119,7 @@ pub fn image_write(coding: &mut CodingPara, image: &ImageI32) -> BpeResult<()> {
     let width = coding.image_width as usize;
     let depth = coding.header.part4.pixel_bit_depth_4bits;
     let signed = coding.header.part4.signed_pixels;
-    let machineendianness: u8 = 0;
-    let swap = coding.pixel_byte_order != machineendianness;
+    let swap = byte_order_differs(coding.pixel_byte_order);
 
     if depth != 0 && depth <= 8 {
         write_u8_rows(&mut file, rows, width, |r, i| {
@@ -270,8 +148,7 @@ pub fn image_write_float(coding: &CodingPara, image: &ImageF32) -> BpeResult<()>
     let width = coding.image_width as usize;
     let depth = coding.header.part4.pixel_bit_depth_4bits;
     let signed = coding.header.part4.signed_pixels;
-    let machineendianness: u8 = 0;
-    let swap = coding.pixel_byte_order != machineendianness;
+    let swap = byte_order_differs(coding.pixel_byte_order);
 
     if depth != 0 && depth <= 8 {
         write_u8_rows(&mut file, rows, width, |r, i| {

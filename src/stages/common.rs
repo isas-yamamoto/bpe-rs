@@ -2,7 +2,7 @@
 //!
 //! Stage layer: Rice option emit/read, rate-stop bookkeeping, and gaggle ranges.
 
-use crate::bitstream::{bits_output, bits_read};
+use crate::bitstream::{bits_read, bits_write};
 use crate::error::{BpeError, BpeResult};
 use crate::pattern::bit_plane_symbol_reset;
 use crate::rice::{rice_coding, rice_decoding};
@@ -19,11 +19,11 @@ pub(super) fn emit_code_option_once(
         if !flag_code_option_output[(sym_len - 2) as usize] {
             flag_code_option_output[(sym_len - 2) as usize] = true;
             if sym_len == 2 {
-                bits_output(coding, option[0] as u32, 1)?;
+                bits_write(coding, option[0] as u32, 1)?;
             } else if sym_len == 3 {
-                bits_output(coding, option[1] as u32, 2)?;
+                bits_write(coding, option[1] as u32, 2)?;
             } else if sym_len == 4 {
-                bits_output(coding, option[2] as u32, 2)?;
+                bits_write(coding, option[2] as u32, 2)?;
             } else {
                 return Err(BpeError::StageCodingError);
             }
@@ -53,7 +53,7 @@ pub(super) fn rice_then_signs_then_reset(
     rice_coding(coding, sym.sym_mapped_pattern as u32, sym.sym_len, option)?;
     if emit_signs {
         let counter = count_ones_in_sym_val(sym.sym_val, sym.sym_len);
-        bits_output(coding, sym.sign as u32, counter)?;
+        bits_write(coding, sym.sign as u32, counter)?;
     }
     bit_plane_symbol_reset(sym);
     Ok(())
