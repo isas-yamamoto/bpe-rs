@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'release/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'release/**']
   workflow_dispatch:
 
 env:
@@ -39,7 +39,7 @@ jobs:
           python-version: '3.x'
       - run: cargo build --release
       - run: cargo test
-      # C 参照実装 (original/source) はこのリポジトリに含まれないため、
-      # バイト一致の golden_test.ps1 はローカル専用。CI では自己整合性を見る。
+      # C 参照実装とのバイト一致検証は bpe-c-comparison リポジトリで行う
+      # (https://github.com/isas-yamamoto/bpe-c-comparison)。CI では自己整合性を見る。
       - name: roundtrip smoke test
         run: python scripts/ci_roundtrip.py
