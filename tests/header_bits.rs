@@ -21,7 +21,7 @@ fn header_roundtrip_default() {
     header_output(&mut enc).unwrap();
     if enc.bits.code_word_alignment_bits != 0 {
         let shift = enc.bits.code_word_length as i32 - enc.bits.code_word_alignment_bits as i32;
-        bitstream::bits_output(&mut enc, 0, shift).unwrap();
+        bitstream::bits_write(&mut enc, 0, shift).unwrap();
     }
     drop(enc.bits.file.take());
     let bytes = fs::read(&path).unwrap();

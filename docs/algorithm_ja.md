@@ -142,10 +142,10 @@ decoder_engine
 | ブロック化 | `encoder.rs` (`build_block_string`) | 変換後係数を 8×8 の列に並べ替え |
 | DC 符号化 | `dc/` | ビット深度決定、量子化、DPCM、Rice 系エントロピー |
 | AC depth | `ac/depth.rs` | 各ブロックの AC 最大ビット深度を符号化 |
-| ブロック走査 | `block.rs` | 1 プレーン内で親子孫の有意性シンボルを作る |
+| ブロック走査 | `block/` | 1 プレーン内で親子孫の有意性シンボルを作る |
 | ステージ符号化 | `stages/` | ガッグル単位でシンボルを Rice 符号化し、最後に refine |
 | パターン | `pattern/` | シンボル値のテーブル写像と符号化オプション選択 |
-| 調整 | `adjust.rs` | レート制限で途中停止したときの係数補正（デコード） |
+| 調整 | `adjust/` | レート制限で途中停止したときの係数補正（デコード） |
 
 ---
 
@@ -190,12 +190,12 @@ decoder_engine
 | 全体エンジン | `encoder.rs`, `decoder.rs` | `bpe_encoder.c`, `bpe_decoder.c` |
 | DC | `dc/` | `DC_EnDeCoding.c` |
 | AC | `ac/` | `AC_BitPlaneCoding.c` |
-| ブロック走査 | `block.rs` | `BPEBlockCoding.c` |
+| ブロック走査 | `block/` | `BPEBlockCoding.c` |
 | ステージ | `stages/` | `StagesCodingGaggles.c` |
 | パターン | `pattern/` | `PatternCoding.c` |
-| Rice | `rice.rs` | `ricecoding.c` |
+| Rice | `rice/` | `ricecoding.c` |
 | ウェーブレット | `wavelet/` | `lifting_97*.c`, `CoeffGroup.c` |
-| ヘッダ / ビット I/O | `header.rs`, `bitstream.rs` | `header.c`, `bitsIO.c` |
+| ヘッダ / ビット I/O | `header.rs`, `bitstream/` | `header.c`, `bitsIO.c` |
 
 「1 ファイルに encode と対になる decode を置く」方針で整理されています（例: `dc/entropy.rs`, `stages/gaggles2.rs`）。
 

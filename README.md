@@ -53,10 +53,11 @@ rust/
   src/
     main.rs                 # CLI（-e/-d/-o/-r/-w/-h/-b/-f/-t/-s/-g）
     types.rs, error.rs
-    bitstream.rs, header.rs, image_io.rs
-    rice.rs                 # Rice 本体 + gaggle の k 選択
+    bitstream/, header.rs   # bitstream: common | encode | decode
+    image_io/               # common | size | read | write
+    rice/                   # encode | decode | select_k
     encoder.rs, decoder.rs  # パイプライン入口
-    block.rs, adjust.rs
+    block/, adjust/         # block: common|orchestrate|type_*/tran_*
     dc/                     # twos_comp | dpcm | entropy | coding
     ac/                     # depth | bpe
     pattern/                # mapping | options

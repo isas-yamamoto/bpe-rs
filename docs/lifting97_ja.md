@@ -83,7 +83,7 @@ flowchart LR
 
 ## 3. パイプライン上の入口
 
-エンコード時は `dwt_forward` が入口です（[`src/wavelet/mod.rs`](../src/wavelet/mod.rs)）。
+エンコード時は `dwt_forward` が入口です（[`src/wavelet/orchestrate.rs`](../src/wavelet/orchestrate.rs)）。
 
 ```mermaid
 flowchart TD
@@ -234,11 +234,11 @@ x <- [ 低周波[0..n/2), 高周波[0..n/2) ]
 
 | 役割 | 関数 / ファイル |
 |------|-----------------|
-| 入口（符号化） | `dwt_forward` — `src/wavelet/mod.rs` |
+| 入口（符号化） | `dwt_forward` — `src/wavelet/orchestrate.rs` |
 | 入口（復号） | `dwt_reverse` / `dwt_reverse_floating` |
 | 整数 1D / 2D | `forward_lifting97i` / `inverse_lifting97i` / `lifting_m97_2d` — `lifting97i.rs` |
 | 浮動小数 1D / 2D | `forward_lifting97f` / `inverse_lifting97f` / `lifting_f97_2d` — `lifting97f.rs` |
-| 帯域スケール | `coefficients_scaling` / `coefficients_rescaling` — `mod.rs` |
+| 帯域スケール | `coefficients_scaling` / `coefficients_rescaling` — `orchestrate.rs` |
 | 係数の並び替え | `coeff_regroup` など — `coeff_group.rs` |
 | C 参照 | `original/source/lifting_97M.c`, `lifting_97f.c`, `waveletbpe.c` |
 

@@ -26,7 +26,7 @@ TypeP(親) -> TranB(子孫ある?)
 ## 詳細
 
 この文書は、AC ビットプレーンごとに **8x8 ブロック内の係数を森状に走査し、シンボルと refine ビットを作る** 処理を説明します。
-実装: [`src/block.rs`](../src/block.rs) の `block_scan_encode`。
+実装: [`src/block/`](../src/block/) の `block_scan_encode`（`orchestrate.rs` + 各 `type_*` / `tran_*`）。
 
 後続の Rice 符号化は [rice_ja.md](rice_ja.md)、ステージ出力は [ac_stages_ja.md](ac_stages_ja.md) を参照してください。
 
@@ -121,12 +121,11 @@ TypeP(親) -> TranB(子孫ある?)
 
 ## 6. ソース対応
 
-| 役割 | 関数 |
+| 役割 | 関数 / ファイル |
 |------|------|
-| 入口 | `block_scan_encode` |
-| 座標 | `band_origin`, `grand_child_origin` |
-| 各ステージ | `scan_type_p` … `scan_type_hij` |
-| コンテキスト | `ScanCtx`（プレーン・重み・有意判定） |
+| 入口 | `block_scan_encode` — `orchestrate.rs` |
+| 共有 | `ScanCtx`, `band_origin`, … — `common.rs` |
+| 各ステージ | `type_p` / `tran_b` / `tran_d` / `type_ci` / `tran_gi` / `tran_hi` / `type_hij` |
 | C 参照 | `original/source/BPEBlockCoding.c` |
 
 ---

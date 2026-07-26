@@ -25,7 +25,7 @@
 ## 詳細
 
 レート制限で復号が途中停止したとき、**未確定の係数を不確定区間の中点へ寄せる** 復号後処理です。
-実装: [`src/adjust.rs`](../src/adjust.rs) の `adjust_output`。
+実装: [`src/adjust/`](../src/adjust/) の `adjust_output`（`orchestrate.rs` + `stage1`〜`4` + `common.rs`）。
 
 ---
 
@@ -67,12 +67,12 @@
 
 ## 4. ソース
 
-| 関数 | 役割 |
+| 関数 / ファイル | 役割 |
 |------|------|
-| `adjust_output` | 入口 |
-| `dispatch_stage` | stage 選択 |
-| `stage1`〜`stage4` | 各停止階層 |
-| `refine_amount` / `bump` | 補正量の決定・適用 |
+| `orchestrate.rs` · `adjust_output` | 入口 |
+| `orchestrate.rs` · `dispatch_stage` | stage 選択 |
+| `stage1.rs`〜`stage4.rs` | 各停止階層 |
+| `common.rs` · `refine_amount` / `bump` | 補正量の決定・適用 |
 
 ## 関連
 

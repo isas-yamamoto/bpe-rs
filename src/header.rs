@@ -1,72 +1,72 @@
 //! Header encode/decode — original/source/header.c
 
-use crate::bitstream::{bits_output, bits_read};
+use crate::bitstream::{bits_read, bits_write};
 use crate::error::{BpeError, BpeResult};
 use crate::types::{CodingPara, Header, INTEGER_WAVELET};
 
 fn write_part1(coding: &mut CodingPara) -> BpeResult<()> {
-    bits_output(coding, coding.header.part1.start_img_flag as u32, 1)?;
-    bits_output(coding, coding.header.part1.eng_img_flg as u32, 1)?;
-    bits_output(coding, coding.header.part1.segment_count_8bits as u32, 8)?;
-    bits_output(coding, coding.header.part1.bit_depth_dc_5bits as u32, 5)?;
-    bits_output(coding, coding.header.part1.bit_depth_ac_5bits as u32, 5)?;
-    bits_output(coding, coding.header.part1.reserved as u32, 1)?;
-    bits_output(coding, coding.header.part1.part2_flag as u32, 1)?;
-    bits_output(coding, coding.header.part1.part3_flag as u32, 1)?;
-    bits_output(coding, coding.header.part1.part4_flag as u32, 1)?;
+    bits_write(coding, coding.header.part1.start_img_flag as u32, 1)?;
+    bits_write(coding, coding.header.part1.eng_img_flg as u32, 1)?;
+    bits_write(coding, coding.header.part1.segment_count_8bits as u32, 8)?;
+    bits_write(coding, coding.header.part1.bit_depth_dc_5bits as u32, 5)?;
+    bits_write(coding, coding.header.part1.bit_depth_ac_5bits as u32, 5)?;
+    bits_write(coding, coding.header.part1.reserved as u32, 1)?;
+    bits_write(coding, coding.header.part1.part2_flag as u32, 1)?;
+    bits_write(coding, coding.header.part1.part3_flag as u32, 1)?;
+    bits_write(coding, coding.header.part1.part4_flag as u32, 1)?;
 
     if coding.header.part1.eng_img_flg {
-        bits_output(coding, coding.header.part1.pad_rows_3bits as u32, 3)?;
-        bits_output(coding, coding.header.part1.reserved_5bits as u32, 5)?;
+        bits_write(coding, coding.header.part1.pad_rows_3bits as u32, 3)?;
+        bits_write(coding, coding.header.part1.reserved_5bits as u32, 5)?;
     }
     Ok(())
 }
 
 fn write_part2(coding: &mut CodingPara) -> BpeResult<()> {
-    bits_output(coding, coding.header.part2.seg_byte_limit_27bits, 27)?;
-    bits_output(coding, coding.header.part2.dc_stop as u32, 1)?;
-    bits_output(coding, coding.header.part2.bit_plane_stop_5bits as u32, 5)?;
-    bits_output(coding, coding.header.part2.stage_stop_2bits as u32, 2)?;
-    bits_output(coding, coding.header.part2.use_fill as u32, 1)?;
-    bits_output(coding, coding.header.part2.reserved_4bits as u32, 4)?;
+    bits_write(coding, coding.header.part2.seg_byte_limit_27bits, 27)?;
+    bits_write(coding, coding.header.part2.dc_stop as u32, 1)?;
+    bits_write(coding, coding.header.part2.bit_plane_stop_5bits as u32, 5)?;
+    bits_write(coding, coding.header.part2.stage_stop_2bits as u32, 2)?;
+    bits_write(coding, coding.header.part2.use_fill as u32, 1)?;
+    bits_write(coding, coding.header.part2.reserved_4bits as u32, 4)?;
     Ok(())
 }
 
 fn write_part3(coding: &mut CodingPara) -> BpeResult<()> {
-    bits_output(coding, coding.header.part3.s_20bits, 20)?;
-    bits_output(coding, coding.header.part3.opt_dc_select as u32, 1)?;
-    bits_output(coding, coding.header.part3.opt_ac_select as u32, 1)?;
-    bits_output(coding, coding.header.part3.reserved_2bits as u32, 2)?;
+    bits_write(coding, coding.header.part3.s_20bits, 20)?;
+    bits_write(coding, coding.header.part3.opt_dc_select as u32, 1)?;
+    bits_write(coding, coding.header.part3.opt_ac_select as u32, 1)?;
+    bits_write(coding, coding.header.part3.reserved_2bits as u32, 2)?;
     Ok(())
 }
 
 fn write_part4(coding: &mut CodingPara) -> BpeResult<()> {
-    bits_output(coding, coding.header.part4.dwt_type as u32, 1)?;
-    bits_output(coding, coding.header.part4.reserved_2bits as u32, 2)?;
-    bits_output(coding, coding.header.part4.signed_pixels as u32, 1)?;
-    bits_output(coding, coding.header.part4.pixel_bit_depth_4bits as u32, 4)?;
-    bits_output(coding, coding.header.part4.image_width_20bits, 20)?;
-    bits_output(coding, coding.header.part4.transpose_img as u32, 1)?;
-    bits_output(coding, coding.header.part4.codeword_length_2bits as u32, 2)?;
-    bits_output(coding, coding.header.part4.reserved as u32, 1)?;
-    bits_output(coding, coding.header.part4.custom_wt_flag as u32, 1)?;
+    bits_write(coding, coding.header.part4.dwt_type as u32, 1)?;
+    bits_write(coding, coding.header.part4.reserved_2bits as u32, 2)?;
+    bits_write(coding, coding.header.part4.signed_pixels as u32, 1)?;
+    bits_write(coding, coding.header.part4.pixel_bit_depth_4bits as u32, 4)?;
+    bits_write(coding, coding.header.part4.image_width_20bits, 20)?;
+    bits_write(coding, coding.header.part4.transpose_img as u32, 1)?;
+    bits_write(coding, coding.header.part4.codeword_length_2bits as u32, 2)?;
+    bits_write(coding, coding.header.part4.reserved as u32, 1)?;
+    bits_write(coding, coding.header.part4.custom_wt_flag as u32, 1)?;
     if !coding.header.part4.custom_wt_flag {
-        bits_output(coding, 0, 8)?;
-        bits_output(coding, 0, 8)?;
-        bits_output(coding, 0, 4)?;
+        bits_write(coding, 0, 8)?;
+        bits_write(coding, 0, 8)?;
+        bits_write(coding, 0, 4)?;
     } else {
-        bits_output(coding, coding.header.part4.custom_wt_hh1 as u32, 2)?;
-        bits_output(coding, coding.header.part4.custom_wt_hl1 as u32, 2)?;
-        bits_output(coding, coding.header.part4.custom_wt_lh1 as u32, 2)?;
-        bits_output(coding, coding.header.part4.custom_wt_hh2 as u32, 2)?;
-        bits_output(coding, coding.header.part4.custom_wt_hl2 as u32, 2)?;
-        bits_output(coding, coding.header.part4.custom_wt_lh2 as u32, 2)?;
-        bits_output(coding, coding.header.part4.custom_wt_hh3 as u32, 2)?;
-        bits_output(coding, coding.header.part4.custom_wt_hl3 as u32, 2)?;
-        bits_output(coding, coding.header.part4.custom_wt_lh3 as u32, 2)?;
-        bits_output(coding, coding.header.part4.custom_wt_ll3 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_hh1 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_hl1 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_lh1 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_hh2 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_hl2 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_lh2 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_hh3 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_hl3 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_lh3 as u32, 2)?;
+        bits_write(coding, coding.header.part4.custom_wt_ll3 as u32, 2)?;
     }
-    bits_output(coding, coding.header.part4.reserved_11bits as u32, 11)?;
+    bits_write(coding, coding.header.part4.reserved_11bits as u32, 11)?;
     Ok(())
 }
 
