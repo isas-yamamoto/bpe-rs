@@ -53,7 +53,8 @@ src/
 ## ブランチ運用
 
 - `main` — 安定版。タグ付きリリース（`v*`）はここから作成する。
-- `release/x.y` — 次リリースに向けた開発ブランチ。安定したら `main` にマージしてタグを打つ。
+- `develop` — 日々の開発ブランチ。安定したら `main` にマージしてタグを打つ。
+- `archive/pre-public` — 履歴整理前の開発記録（参照用）。
 
 ## CI / CD
 
@@ -61,7 +62,7 @@ GitHub Actions で次を自動実行する。
 
 | ワークフロー | 契機 | 内容 |
 |--------------|------|------|
-| [`ci.yml`](.github/workflows/ci.yml) | push / PR (main, release/**) | `cargo fmt --check`、`cargo clippy`、Linux/Windows/macOS で `cargo test` とラウンドトリップ検証 |
+| [`ci.yml`](.github/workflows/ci.yml) | push / PR (main, develop) | `cargo fmt --check`、`cargo clippy`、Linux/Windows/macOS で `cargo test` とラウンドトリップ検証 |
 | [`release.yml`](.github/workflows/release.yml) | `v*` タグ | 3 OS 分の `bpe` バイナリをビルドし GitHub Release に公開 |
 
 C 参照実装とのバイト一致検証は [bpe-c-comparison](https://github.com/isas-yamamoto/bpe-c-comparison) 側で行う。
