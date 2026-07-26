@@ -11,6 +11,16 @@ C 参照実装とビットストリーム互換の純 Rust Bit Plane Encoder。
 | [bpe-training](https://github.com/isas-yamamoto/bpe-training) | アルゴリズム学習ドキュメント（walkthrough / 学習ストーリー / 用語集ほか） |
 | [bpe-c-comparison](https://github.com/isas-yamamoto/bpe-c-comparison) | C 参照実装とのバイト一致検証（ゴールデンテスト） |
 
+## 帰属（Attribution）
+
+本実装は [CCSDS 122.0](https://public.ccsds.org/)（Image Data Compression）の推奨規格に基づく。
+ビットストリーム互換の検証には、University of Nebraska-Lincoln の
+Hongqiang Wang 氏による C 参照実装を用いた（歴史的な配布元:
+http://hyperspectral.unl.edu/）。
+
+UNL のソースコードは本リポジトリに含まない。詳細は [`NOTICE`](NOTICE) を参照。
+本リポジトリ自身のライセンスは未確定（検討中）。
+
 ## 互換性（検証済み）
 
 同一入力で Rust / C の `.bpe` がバイト一致。クロスデコードも raw 一致。
