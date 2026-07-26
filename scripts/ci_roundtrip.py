@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""CI 用のラウンドトリップ検証。
+"""Round-trip verification for CI.
 
-C 参照実装 (original/source) はこのリポジトリに含まれないため、
-CI ではバイト一致のゴールデンテスト (scripts/golden_test.ps1) を実行できない。
-代わりに Rust 単体で encode -> decode を通し、出力サイズと画素誤差を確認する。
+The C reference implementation is not part of this repository, so CI
+cannot run the byte-identical golden test (see the bpe-c-comparison
+repository). Instead, run encode -> decode with the Rust binary alone
+and check the output size and pixel error.
 """
 
 import os
@@ -17,7 +18,7 @@ HEIGHT = 256
 PIXEL_BITS = 8
 BLOCKS_PER_SEGMENT = 256
 
-# (ケース名, レート -r, DWT 種別 -t, 許容する平均誤差, 許容する最大誤差)
+# (case name, rate -r, DWT type -t, allowed mean error, allowed max error)
 CASES = [
     ("int_r0", "0", "1", 0.0, 0),
     ("int_r1", "1.0", "1", 2.0, 32),
