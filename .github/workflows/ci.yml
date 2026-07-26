@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, 'release/**']
+    branches: [main, develop]
   pull_request:
-    branches: [main, 'release/**']
+    branches: [main, develop]
   workflow_dispatch:
 
 env:
@@ -39,7 +39,7 @@ jobs:
           python-version: '3.x'
       - run: cargo build --release
       - run: cargo test
-      # C 参照実装とのバイト一致検証は bpe-c-comparison リポジトリで行う
-      # (https://github.com/isas-yamamoto/bpe-c-comparison)。CI では自己整合性を見る。
+      # Byte-level comparison against the C reference lives in the
+      # bpe-c-comparison repository; CI only checks self-consistency here.
       - name: roundtrip smoke test
         run: python scripts/ci_roundtrip.py

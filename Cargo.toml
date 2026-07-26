@@ -3,7 +3,8 @@ name = "bpe_rs"
 version = "0.1.0"
 edition = "2021"
 description = "Bit Plane Encoder - pure Rust, bitstream-compatible with the C reference implementation"
-license = "Unlicense"
+# Final license under review; see NOTICE. Do not treat Unlicense as settled.
+license = "UNLICENSED"
 
 [[bin]]
 name = "bpe"

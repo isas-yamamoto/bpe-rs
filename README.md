@@ -2,44 +2,60 @@
 
 [![CI](https://github.com/isas-yamamoto/bpe-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/isas-yamamoto/bpe-rs/actions/workflows/ci.yml)
 
-C 参照実装とビットストリーム互換の純 Rust Bit Plane Encoder。
+A pure Rust Bit Plane Encoder whose bitstream is compatible with the C
+reference implementation.
 
-## 関連リポジトリ
+## Related repositories
 
-| リポジトリ | 内容 |
+| Repository | Contents |
 |---|---|
-| [bpe-training](https://github.com/isas-yamamoto/bpe-training) | アルゴリズム学習ドキュメント（walkthrough / 学習ストーリー / 用語集ほか） |
-| [bpe-c-comparison](https://github.com/isas-yamamoto/bpe-c-comparison) | C 参照実装とのバイト一致検証（ゴールデンテスト） |
+| [bpe-training](https://github.com/isas-yamamoto/bpe-training) | Learning documentation for the algorithm, in Japanese (walkthrough, guided chapters, glossary) |
+| [bpe-c-comparison](https://github.com/isas-yamamoto/bpe-c-comparison) | Byte-level compatibility verification against the C reference (golden tests) |
 
-## 互換性（検証済み）
+## Attribution
 
-同一入力で Rust / C の `.bpe` がバイト一致。クロスデコードも raw 一致。
-検証手順は [bpe-c-comparison](https://github.com/isas-yamamoto/bpe-c-comparison) を参照
-（C 参照実装のバイナリが必要なためローカル専用）。
+This implementation follows the [CCSDS 122.0](https://public.ccsds.org/)
+Recommended Standard for Image Data Compression. Bitstream compatibility
+was verified against the C reference implementation by Hongqiang Wang at
+the University of Nebraska-Lincoln (historically distributed from
+http://hyperspectral.unl.edu/).
 
-## アルゴリズム概要
+The UNL source code is not included in this repository. See
+[`NOTICE`](NOTICE) for details. The license of this repository itself is
+still under review.
 
-要約（エンコード）:
+## Compatibility (verified)
 
-1. `encoder_engine` — パディング → DWT → ブロック並べ替え → セグメントループ
-2. `dc_encoding` — 統計 → ビット深度 → ヘッダ → 量子化 → DPCM → エントロピー
-3. `ac_bpe_encoding` — AC depth → ビットプレーンループ
-4. 各プレーン: `block_scan_encode` → `stages_en_coding`（gaggles1/2/3 → refine）
+For identical inputs, the Rust and C encoders produce byte-identical
+`.bpe` files, and cross decoding yields identical raw output. See
+[bpe-c-comparison](https://github.com/isas-yamamoto/bpe-c-comparison)
+for the procedure (local only, since it needs the C reference binary).
 
-デコードは鏡像: `dc_decoding` → `ac_bpe_decoding` → `stages_de_coding` → `adjust_output` → 逆 DWT。
+## Algorithm overview
 
-初学者向けの詳しい解説は [bpe-training](https://github.com/isas-yamamoto/bpe-training) にあります。
+Encoding, in short:
 
-## 構成
+1. `encoder_engine` — padding, DWT, block reordering, segment loop
+2. `dc_encoding` — statistics, bit depth, header, quantization, DPCM, entropy coding
+3. `ac_bpe_encoding` — AC depth, bit-plane loop
+4. per plane: `block_scan_encode` then `stages_en_coding` (gaggles1/2/3, refine)
+
+Decoding mirrors it: `dc_decoding`, `ac_bpe_decoding`, `stages_de_coding`,
+`adjust_output`, inverse DWT.
+
+A beginner-friendly explanation (in Japanese) lives in
+[bpe-training](https://github.com/isas-yamamoto/bpe-training).
+
+## Layout
 
 ```
 src/
-  main.rs                 # CLI（-e/-d/-o/-r/-w/-h/-b/-f/-t/-s/-g）
+  main.rs                 # CLI (-e/-d/-o/-r/-w/-h/-b/-f/-t/-s/-g)
   types.rs, error.rs
   bitstream/, header.rs   # bitstream: common | encode | decode
   image_io/               # common | size | read | write
   rice/                   # encode | decode | select_k
-  encoder.rs, decoder.rs  # パイプライン入口
+  encoder.rs, decoder.rs  # pipeline entry points
   block/, adjust/         # block: common|orchestrate|type_*/tran_*
   dc/                     # twos_comp | dpcm | entropy | coding
   ac/                     # depth | bpe
@@ -48,26 +64,28 @@ src/
   wavelet/                # integer/float 9/7 lifting
 ```
 
-エンコード／デコードはすべて純 Rust。C FFI や `c_bridge` は含まない。
+Encoding and decoding are pure Rust; there is no C FFI or `c_bridge`.
 
-## ブランチ運用
+## Branch model
 
-- `main` — 安定版。タグ付きリリース（`v*`）はここから作成する。
-- `release/x.y` — 次リリースに向けた開発ブランチ。安定したら `main` にマージしてタグを打つ。
+- `main` — stable. Tagged releases (`v*`) are cut here.
+- `develop` — day-to-day development. Merged into `main` once stable, then tagged.
 
 ## CI / CD
 
-GitHub Actions で次を自動実行する。
+GitHub Actions runs the following.
 
-| ワークフロー | 契機 | 内容 |
-|--------------|------|------|
-| [`ci.yml`](.github/workflows/ci.yml) | push / PR (main, release/**) | `cargo fmt --check`、`cargo clippy`、Linux/Windows/macOS で `cargo test` とラウンドトリップ検証 |
-| [`release.yml`](.github/workflows/release.yml) | `v*` タグ | 3 OS 分の `bpe` バイナリをビルドし GitHub Release に公開 |
+| Workflow | Trigger | Contents |
+|----------|---------|----------|
+| [`ci.yml`](.github/workflows/ci.yml) | push / PR (main, develop) | `cargo fmt --check`, `cargo clippy`, then `cargo test` and a round-trip check on Linux/Windows/macOS |
+| [`release.yml`](.github/workflows/release.yml) | `v*` tags | builds the `bpe` binary for the three OSes and publishes a GitHub Release |
 
-C 参照実装とのバイト一致検証は [bpe-c-comparison](https://github.com/isas-yamamoto/bpe-c-comparison) 側で行う。
-このリポジトリの CI では `scripts/ci_roundtrip.py` が encode -> decode を通し、サイズと画素誤差を検査する。
+Byte-level comparison against the C reference happens in
+[bpe-c-comparison](https://github.com/isas-yamamoto/bpe-c-comparison).
+CI in this repository runs `scripts/ci_roundtrip.py`, which encodes and
+decodes a test image and checks output size and pixel error.
 
-## ビルド / 実行
+## Build / run
 
 ```bash
 cargo build --release
@@ -75,4 +93,4 @@ cargo build --release
 ./target/release/bpe -d out.bpe -o decoded.raw
 ```
 
-Windows では `.\target\release\bpe.exe` を使う。
+On Windows, use `.\target\release\bpe.exe`.
