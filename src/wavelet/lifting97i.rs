@@ -17,7 +17,16 @@ fn floor_toward_neg_inf_from_temp(temp: f64) -> i32 {
     }
 }
 
-fn forward_lifting97i(x_in: &mut [i32], n: usize, x_alloc: &mut [i32]) {
+/// `scratch_a`/`scratch_b`は呼び出し元が使い回すスクラッチバッファ。長さは呼び出しの
+/// 度に必要なサイズへ`resize`されるが、確保済みcapacityが十分ならヒープ割り当ては
+/// 発生しない(呼び出し元が最大サイズで一度だけ確保しておくことを想定)。
+fn forward_lifting97i(
+    x_in: &mut [i32],
+    n: usize,
+    x_alloc: &mut [i32],
+    scratch_a: &mut Vec<i32>,
+    scratch_b: &mut Vec<i32>,
+) {
     let x_base = F_EXTPAD;
     x_alloc[x_base..x_base + n].copy_from_slice(&x_in[..n]);
     for i in 1..=F_EXTPAD {
@@ -26,7 +35,9 @@ fn forward_lifting97i(x_in: &mut [i32], n: usize, x_alloc: &mut [i32]) {
     }
 
     let half = n >> 1;
-    let mut d = vec![0i32; half + 1];
+    scratch_a.clear();
+    scratch_a.resize(half + 1, 0);
+    let d = scratch_a;
     let mut x_idx = x_base;
     for di in 0..=half {
         let temp = -1.0 / 16.0 * (x_alloc[x_idx - 4] as f64 + x_alloc[x_idx + 2] as f64)
@@ -36,7 +47,9 @@ fn forward_lifting97i(x_in: &mut [i32], n: usize, x_alloc: &mut [i32]) {
         x_idx += 2;
     }
 
-    let mut r = vec![0i32; half];
+    scratch_b.clear();
+    scratch_b.resize(half, 0);
+    let r = scratch_b;
     x_idx = x_base;
     for n_i in 0..half {
         let temp = -0.25 * (d[n_i] as f64 + d[n_i + 1] as f64) + 0.5;
@@ -44,11 +57,17 @@ fn forward_lifting97i(x_in: &mut [i32], n: usize, x_alloc: &mut [i32]) {
         x_idx += 2;
     }
 
-    x_in[..half].copy_from_slice(&r);
+    x_in[..half].copy_from_slice(r);
     x_in[half..n].copy_from_slice(&d[1..=half]);
 }
 
-fn inverse_lifting97i(x: &mut [i32], n: usize, x_alloc: &mut [i32]) {
+fn inverse_lifting97i(
+    x: &mut [i32],
+    n: usize,
+    x_alloc: &mut [i32],
+    scratch_a: &mut Vec<i32>,
+    scratch_b: &mut Vec<i32>,
+) {
     let half = n / 2;
     let r_base = D_EXTPAD;
     let d_base = D_EXTPAD + half + D_EXTPAD + D_EXTPAD + D_EXTPAD;
@@ -71,7 +90,9 @@ fn inverse_lifting97i(x: &mut [i32], n: usize, x_alloc: &mut [i32]) {
         x_alloc[d_base + (half - 1) + i] = x_alloc[d_base + half - i - 1];
     }
 
-    let mut x_0 = vec![0i32; half + 3];
+    scratch_a.clear();
+    scratch_a.resize(half + 3, 0);
+    let x_0 = scratch_a;
     let mut d_idx = d_base;
     let mut r_idx = r_base;
     for i in 0..(half + 3) {
@@ -81,7 +102,9 @@ fn inverse_lifting97i(x: &mut [i32], n: usize, x_alloc: &mut [i32]) {
         r_idx += 1;
     }
 
-    let mut x_1 = vec![0i32; half];
+    scratch_b.clear();
+    scratch_b.resize(half, 0);
+    let x_1 = scratch_b;
     d_idx = d_base;
     for n_i in 0..half {
         let rounding = -1.0 / 16.0 * (x_0[n_i] as f64 + x_0[n_i + 3] as f64)
@@ -110,19 +133,36 @@ pub fn lifting_m97_2d(
     }
     let mut x_alloc = vec![0i32; img_cols + img_rows + F_EXTPAD + F_EXTPAD];
     let mut buffer = vec![0i32; img_rows];
+    // レベル0(最大サイズ)で必要な容量を最初に確保しておけば、以降のlifting呼び出し
+    // (レベルが進むほどnが縮む)は`resize`のみでヒープ再割り当てが起きない。
+    let max_half = img_cols.max(img_rows) / 2;
+    let mut scratch_a: Vec<i32> = Vec::with_capacity(max_half + 3);
+    let mut scratch_b: Vec<i32> = Vec::with_capacity(max_half + 3);
 
     if !inverse {
         for l in 0..levels {
             let w = img_cols >> l;
             let h = img_rows >> l;
             for y in 0..h {
-                forward_lifting97i(&mut rows[y][..w], w, &mut x_alloc);
+                forward_lifting97i(
+                    &mut rows[y][..w],
+                    w,
+                    &mut x_alloc,
+                    &mut scratch_a,
+                    &mut scratch_b,
+                );
             }
             for x in 0..w {
                 for y in 0..h {
                     buffer[y] = rows[y][x];
                 }
-                forward_lifting97i(&mut buffer[..h], h, &mut x_alloc);
+                forward_lifting97i(
+                    &mut buffer[..h],
+                    h,
+                    &mut x_alloc,
+                    &mut scratch_a,
+                    &mut scratch_b,
+                );
                 for y in 0..h {
                     rows[y][x] = buffer[y];
                 }
@@ -136,13 +176,25 @@ pub fn lifting_m97_2d(
                 for y in 0..h {
                     buffer[y] = rows[y][x];
                 }
-                inverse_lifting97i(&mut buffer[..h], h, &mut x_alloc);
+                inverse_lifting97i(
+                    &mut buffer[..h],
+                    h,
+                    &mut x_alloc,
+                    &mut scratch_a,
+                    &mut scratch_b,
+                );
                 for y in 0..h {
                     rows[y][x] = buffer[y];
                 }
             }
             for y in 0..h {
-                inverse_lifting97i(&mut rows[y][..w], w, &mut x_alloc);
+                inverse_lifting97i(
+                    &mut rows[y][..w],
+                    w,
+                    &mut x_alloc,
+                    &mut scratch_a,
+                    &mut scratch_b,
+                );
             }
         }
     }
@@ -164,9 +216,11 @@ mod tests {
             let mut data = sample(n);
             let original = data.clone();
             let mut alloc = vec![0i32; n * 4 + 16];
-            forward_lifting97i(&mut data, n, &mut alloc);
+            let mut scratch_a = Vec::new();
+            let mut scratch_b = Vec::new();
+            forward_lifting97i(&mut data, n, &mut alloc, &mut scratch_a, &mut scratch_b);
             assert_ne!(data, original, "transform should change the samples");
-            inverse_lifting97i(&mut data, n, &mut alloc);
+            inverse_lifting97i(&mut data, n, &mut alloc, &mut scratch_a, &mut scratch_b);
             assert_eq!(data, original, "length {} must round-trip exactly", n);
         }
     }
@@ -176,7 +230,9 @@ mod tests {
         let n = 16;
         let mut data = vec![100i32; n];
         let mut alloc = vec![0i32; n * 4 + 16];
-        forward_lifting97i(&mut data, n, &mut alloc);
+        let mut scratch_a = Vec::new();
+        let mut scratch_b = Vec::new();
+        forward_lifting97i(&mut data, n, &mut alloc, &mut scratch_a, &mut scratch_b);
         assert!(
             data[n / 2..].iter().all(|&v| v == 0),
             "a flat signal must not produce detail coefficients: {:?}",

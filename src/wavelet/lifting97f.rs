@@ -27,7 +27,15 @@ const HIGH_PASS_FILTER: [f32; 7] = [
     -0.064538882629,
 ];
 
-fn forward_lifting97f(x_in: &mut [f32], n: usize, x_alloc: &mut [f32]) {
+/// `scratch_a`/`scratch_b`は呼び出し元が使い回すスクラッチバッファ(`lifting97i.rs`と
+/// 同じ理由: 最大サイズで一度確保しておけばレベルが進んでも再割り当てが起きない)。
+fn forward_lifting97f(
+    x_in: &mut [f32],
+    n: usize,
+    x_alloc: &mut [f32],
+    scratch_a: &mut Vec<f32>,
+    scratch_b: &mut Vec<f32>,
+) {
     let x_base = F_EXTPAD;
     x_alloc[x_base..x_base + n].copy_from_slice(&x_in[..n]);
     for i in 1..=F_EXTPAD {
@@ -35,8 +43,12 @@ fn forward_lifting97f(x_in: &mut [f32], n: usize, x_alloc: &mut [f32]) {
         x_alloc[x_base + (n - 1) + i] = x_alloc[x_base + (n - 1) - i];
     }
     let half = n >> 1;
-    let mut d = vec![0f32; half + 3];
-    let mut r = vec![0f32; half + 2];
+    scratch_a.clear();
+    scratch_a.resize(half + 3, 0.0);
+    let d = scratch_a;
+    scratch_b.clear();
+    scratch_b.resize(half + 2, 0.0);
+    let r = scratch_b;
     let lpf = &LOW_PASS_FILTER[4..]; // LPF[0] at center
                                      // C: LPF = LowPassFilter + 4, so LPF[0]=LowPassFilter[4], LPF[1]=[5]... but uses LPF[0]..[4]
                                      // Actually LowPassFilter has 9 elements, +4 points to index 4 (center 0.852...)
@@ -132,18 +144,33 @@ pub fn lifting_f97_2d(
     }
     let mut x_alloc = vec![0f32; img_cols + img_rows + F_EXTPAD + F_EXTPAD + 16];
     let mut buffer = vec![0f32; img_rows];
+    let max_half = img_cols.max(img_rows) / 2;
+    let mut scratch_a: Vec<f32> = Vec::with_capacity(max_half + 3);
+    let mut scratch_b: Vec<f32> = Vec::with_capacity(max_half + 3);
     if !inverse {
         for l in 0..levels {
             let w = img_cols >> l;
             let h = img_rows >> l;
             for y in 0..h {
-                forward_lifting97f(&mut rows[y][..w], w, &mut x_alloc);
+                forward_lifting97f(
+                    &mut rows[y][..w],
+                    w,
+                    &mut x_alloc,
+                    &mut scratch_a,
+                    &mut scratch_b,
+                );
             }
             for x in 0..w {
                 for y in 0..h {
                     buffer[y] = rows[y][x];
                 }
-                forward_lifting97f(&mut buffer[..h], h, &mut x_alloc);
+                forward_lifting97f(
+                    &mut buffer[..h],
+                    h,
+                    &mut x_alloc,
+                    &mut scratch_a,
+                    &mut scratch_b,
+                );
                 for y in 0..h {
                     rows[y][x] = buffer[y];
                 }
@@ -183,7 +210,9 @@ mod tests {
             let mut data: Vec<f32> = (0..n).map(|i| (i as f32) * 1.5 - 10.0).collect();
             let original = data.clone();
             let mut alloc = vec![0f32; n * 4 + 32];
-            forward_lifting97f(&mut data, n, &mut alloc);
+            let mut scratch_a = Vec::new();
+            let mut scratch_b = Vec::new();
+            forward_lifting97f(&mut data, n, &mut alloc, &mut scratch_a, &mut scratch_b);
             inverse_lifting97f(&mut data, n, &mut alloc);
             for (got, want) in data.iter().zip(original.iter()) {
                 assert!(
