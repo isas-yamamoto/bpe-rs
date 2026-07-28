@@ -151,3 +151,78 @@ pub fn coding_options(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+
+    /// Cross-checks against verify/vectors/codingoptions_vectors.txt, generated
+    /// by verify/c_unit_tests/gen_codingoptions_vectors.c, which calls the real
+    /// C `CodingOptions` directly (not through a full encode/decode roundtrip)
+    /// across single-symbol, pairwise, and exhaustive-triple sweeps of every
+    /// sym_len/type combination, plus two hand-derived cases that reach
+    /// tie-break directions no generic sweep hits (see that generator's and
+    /// COMPATIBILITY_REPORT.md §4 item 8's comments for why those two exist).
+    ///
+    /// Ignored by default (like the other shared-vector tests) because it
+    /// needs verify/run_unit_vectors.py to have generated the vectors file
+    /// first; that script runs this test with `--include-ignored`.
+    #[test]
+    #[ignore]
+    fn shared_vectors_match_c_reference() {
+        let vectors_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../verify/vectors/codingoptions_vectors.txt");
+        let text = fs::read_to_string(&vectors_path).unwrap_or_else(|e| {
+            panic!(
+                "couldn't read {}: {e} (run verify/run_unit_vectors.py first)",
+                vectors_path.display()
+            )
+        });
+
+        let mut checked = 0;
+        for line in text.lines() {
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            let [sym_len, type_, n, sym_val_csv, o0, o1, o2] = fields[..] else {
+                panic!("malformed vector line: {line}");
+            };
+            let sym_len: u8 = sym_len.parse().unwrap();
+            let type_: u8 = type_.parse().unwrap();
+            let n: usize = n.parse().unwrap();
+            let sym_vals: Vec<u8> = sym_val_csv.split(',').map(|v| v.parse().unwrap()).collect();
+            assert_eq!(sym_vals.len(), n);
+            let expected: [u8; 3] = [
+                o0.parse().unwrap(),
+                o1.parse().unwrap(),
+                o2.parse().unwrap(),
+            ];
+
+            let mut coding = CodingPara::new();
+            coding.bit_plane = 1;
+
+            let mut block = BitPlaneBits {
+                bit_max_ac: 20,
+                ..Default::default()
+            };
+            for (i, &v) in sym_vals.iter().enumerate() {
+                block.symbols_block[i].type_ = type_;
+                block.symbols_block[i].sym_len = sym_len;
+                block.symbols_block[i].sym_val = v;
+            }
+            let mut blocks = [block];
+
+            let mut got = [0u8; 3];
+            coding_options(&coding, &mut blocks, 1, &mut got).unwrap();
+
+            assert_eq!(
+                got, expected,
+                "sym_len={} type={} sym_vals={:?}: option mismatch: rust={:?} c={:?}",
+                sym_len, type_, sym_vals, got, expected
+            );
+
+            checked += 1;
+        }
+        assert!(checked > 0, "vectors file was empty");
+    }
+}
