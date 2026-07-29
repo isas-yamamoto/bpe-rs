@@ -8,45 +8,19 @@ use std::io::Write;
 
 /// Clamp + convert one 8-bit pixel (integer path).
 fn clamp_u8_i32(v: i32, signed: bool) -> u8 {
-    let mut v = v;
     if signed {
-        if v > 127 {
-            v = 127;
-        }
-        if v < -128 {
-            v = -128;
-        }
-        v as i8 as u8
+        v.clamp(-128, 127) as i8 as u8
     } else {
-        if v > 0xFF {
-            v = 0xFF;
-        }
-        if v < 0 {
-            v = 0;
-        }
-        v as u8
+        v.clamp(0, 0xFF) as u8
     }
 }
 
 /// Clamp + convert one 8-bit pixel (float path: clamp in f32 then cast).
 fn clamp_u8_f32(v: f32, signed: bool) -> u8 {
-    let mut v = v;
     if signed {
-        if v > 127.0 {
-            v = 127.0;
-        }
-        if v < -128.0 {
-            v = -128.0;
-        }
-        (v as i32 as i8) as u8
+        (v.clamp(-128.0, 127.0) as i32 as i8) as u8
     } else {
-        if v > 255.0 {
-            v = 255.0;
-        }
-        if v < 0.0 {
-            v = 0.0;
-        }
-        v as u8
+        v.clamp(0.0, 255.0) as u8
     }
 }
 
