@@ -105,26 +105,32 @@ fn inverse_lifting97f(x: &mut [f32], n: usize, x_alloc: &mut [f32]) {
     let mut out_i = 0usize;
     let mut d_idx = d_base;
     let mut r_idx = r_base;
-    // C: `*x++ = (float)(0.788486 * r[0] - ...)`. The unsuffixed constants
-    // are `double`, so multiplying them against the `float` array elements
-    // promotes the whole sum to double precision; only the final assignment
-    // narrows back to float. Computing this in pure f32 (as a direct
-    // transliteration would) accumulates a small but pervasive per-sample
-    // error relative to C -- usually too small to flip the final `(int)(v +
-    // 0.5)` pixel rounding, but not always: found via a rate-limited,
-    // small-segment decode where it did. Matching C's f64 intermediate
-    // precision here, not just at the final rounding step, closes that gap.
+    // C: `*x++ = (float)(0.788486 * r[0] - 0.0406894 * (r[1] + r[-1]) - ...)`.
+    // The unsuffixed constants are `double`, but C's usual arithmetic
+    // conversions apply *per operator*, not to the expression as a whole:
+    // `r[1] + r[-1]` is a `float + float` (both operands plain array
+    // elements), so that addition happens -- and rounds -- in single
+    // precision *first*; only the already-float-rounded sum then gets
+    // promoted to double when multiplied by the double literal. Converting
+    // each operand to f64 before adding (as an earlier version of this
+    // function did) computes a strictly more precise sum than C's, which is
+    // a *different* rounding, not merely a less-precise one -- confirmed by
+    // disassembling a minimal repro (`inversef97f` compiled standalone):
+    // gcc emits `addss` (f32 add) then `cvtss2sd` (widen the f32 result)
+    // then `mulsd`, for every pairwise term here. `fp()` reproduces exactly
+    // that: add in f32, widen the sum, multiply/accumulate in f64.
+    let fp = |a: f32, b: f32| (a + b) as f64;
     let f = |v: f32| v as f64;
     for _ in 0..half {
         x[out_i] = (0.788486 * f(x_alloc[r_idx])
-            - 0.0406894 * (f(x_alloc[r_idx + 1]) + f(x_alloc[r_idx - 1]))
-            - 0.023849 * (f(x_alloc[d_idx + 1]) + f(x_alloc[d_idx - 2]))
-            + 0.377403 * (f(x_alloc[d_idx]) + f(x_alloc[d_idx - 1]))) as f32;
+            - 0.0406894 * fp(x_alloc[r_idx + 1], x_alloc[r_idx - 1])
+            - 0.023849 * fp(x_alloc[d_idx + 1], x_alloc[d_idx - 2])
+            + 0.377403 * fp(x_alloc[d_idx], x_alloc[d_idx - 1])) as f32;
         out_i += 1;
-        x[out_i] = (0.418092 * (f(x_alloc[r_idx + 1]) + f(x_alloc[r_idx]))
-            - 0.0645389 * (f(x_alloc[r_idx + 2]) + f(x_alloc[r_idx - 1]))
-            - 0.037829 * (f(x_alloc[d_idx + 2]) + f(x_alloc[d_idx - 2]))
-            + 0.110624 * (f(x_alloc[d_idx + 1]) + f(x_alloc[d_idx - 1]))
+        x[out_i] = (0.418092 * fp(x_alloc[r_idx + 1], x_alloc[r_idx])
+            - 0.0645389 * fp(x_alloc[r_idx + 2], x_alloc[r_idx - 1])
+            - 0.037829 * fp(x_alloc[d_idx + 2], x_alloc[d_idx - 2])
+            + 0.110624 * fp(x_alloc[d_idx + 1], x_alloc[d_idx - 1])
             - 0.852699 * f(x_alloc[d_idx])) as f32;
         out_i += 1;
         d_idx += 1;
@@ -189,6 +195,21 @@ pub fn lifting_f97_2d(
                     rows[y][x] = buffer[y];
                 }
             }
+
+            // Only the coarsest level's column-pass is dumped: this is the
+            // one that operates directly on the (known-matching) reassembled
+            // input, so its output is the first point where a divergence
+            // between C and Rust can actually originate rather than being
+            // inherited from an earlier, already-diffed stage.
+            if l == levels - 1 {
+                crate::trace::dump_f32_flat(
+                    &format!("post_idwt_level{l}_columns_rust.txt"),
+                    rows[..img_rows]
+                        .iter()
+                        .flat_map(|row| row[..img_cols].iter().copied()),
+                );
+            }
+
             for y in 0..h {
                 inverse_lifting97f(&mut rows[y][..w], w, &mut x_alloc);
             }
@@ -215,6 +236,165 @@ mod tests {
     use crate::types::alloc_image_f32;
 
     const TOLERANCE: f32 = 1e-2;
+
+    /// Regression test for a real (not just "1 ULP, oh well") bug: an earlier
+    /// version of `inverse_lifting97f` converted each array element to f64
+    /// *before* adding pairs like `r[1] + r[-1]`, but C's `float + float`
+    /// (both plain array elements, no double literal directly involved)
+    /// adds -- and rounds -- in f32 *first*, only promoting the sum to f64
+    /// when it's multiplied by a double literal coefficient afterward.
+    /// Converting-then-adding is strictly more precise than C's actual
+    /// per-operator conversion rules, which is a *different* rounding, not
+    /// a less-precise one. This input/output pair is real data extracted
+    /// from decoding baseline_256 at rate=0.1 (`-t 0 -s 64`, the row-pass
+    /// of the coarsest inverse-lifting level) via
+    /// verify/compare_traces.py's post_idwt_level2_columns seam, where 13
+    /// of 64 outputs previously differed from the C reference by ~1 ULP;
+    /// confirmed via disassembling a minimal standalone repro of
+    /// `inversef97f` (gcc emits `addss` then `cvtss2sd` then `mulsd` for
+    /// every such term) that this was the exact mechanism, not an
+    /// unavoidable compiler-rounding difference (COMPATIBILITY_REPORT.md
+    /// §3.3).
+    #[test]
+    fn matches_c_reference_on_real_decode_data() {
+        let mut x: [f32; 64] = [
+            12.21094418,
+            80.09323883,
+            147.9755249,
+            215.8578186,
+            283.7401123,
+            351.622406,
+            419.5046997,
+            487.3869934,
+            555.2692871,
+            623.1515503,
+            691.0338745,
+            758.9161377,
+            826.7984619,
+            894.6807251,
+            962.5630493,
+            1030.445312,
+            1106.140015,
+            1181.834595,
+            1196.649658,
+            1211.464722,
+            1380.448364,
+            390.3999634,
+            -225.5737915,
+            -124.6475754,
+            -48.95292282,
+            26.74173355,
+            102.4363937,
+            178.1310425,
+            253.8256989,
+            329.5203552,
+            405.2150269,
+            480.909668,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ];
+        // Generated by original/source/inversef97f (gcc -O2) on the exact
+        // same 64 inputs -- see the doc comment above for how.
+        let expected: [f32; 64] = [
+            3.110266924e0,
+            2.387233353e1,
+            5.663450623e1,
+            8.063441467e1,
+            1.046345596e2,
+            1.286343994e2,
+            1.526346130e2,
+            1.766343994e2,
+            2.006346741e2,
+            2.246343994e2,
+            2.486347351e2,
+            2.726343689e2,
+            2.966347961e2,
+            3.206343689e2,
+            3.446348572e2,
+            3.686343384e2,
+            3.926349182e2,
+            4.166343689e2,
+            4.406349487e2,
+            4.646343384e2,
+            4.886350403e2,
+            5.126342773e2,
+            5.366350708e2,
+            5.606343384e2,
+            5.846351318e2,
+            6.086343384e2,
+            6.326351929e2,
+            6.566342773e2,
+            6.806352539e2,
+            7.041300659e2,
+            7.283174438e2,
+            7.548922119e2,
+            7.821596069e2,
+            8.128496094e2,
+            8.381608887e2,
+            8.448496094e2,
+            8.461596069e2,
+            8.414464111e2,
+            8.503623657e2,
+            9.812316895e2,
+            1.023285278e3,
+            6.767492065e2,
+            2.608337402e2,
+            -1.213549709e1,
+            -1.886750793e2,
+            -1.684613647e2,
+            -8.711254120e1,
+            -5.974857712e1,
+            -3.461496353e1,
+            -7.852835178e0,
+            1.890927124e1,
+            4.567132950e1,
+            7.243350983e1,
+            9.919548798e1,
+            1.259577408e2,
+            1.527196350e2,
+            1.794819794e2,
+            2.062438049e2,
+            2.330062103e2,
+            2.597679749e2,
+            2.865304565e2,
+            3.181773682e2,
+            3.431346436e2,
+            3.498247070e2,
+        ];
+        let mut x_alloc = vec![0f32; 64 + 64 + 4 + 4];
+        inverse_lifting97f(&mut x, 64, &mut x_alloc);
+        assert_eq!(x, expected);
+    }
 
     #[test]
     fn forward_inverse_restores_samples_within_tolerance() {
