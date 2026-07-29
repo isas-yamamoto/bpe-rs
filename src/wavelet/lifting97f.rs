@@ -196,20 +196,6 @@ pub fn lifting_f97_2d(
                 }
             }
 
-            // Only the coarsest level's column-pass is dumped: this is the
-            // one that operates directly on the (known-matching) reassembled
-            // input, so its output is the first point where a divergence
-            // between C and Rust can actually originate rather than being
-            // inherited from an earlier, already-diffed stage.
-            if l == levels - 1 {
-                crate::trace::dump_f32_flat(
-                    &format!("post_idwt_level{l}_columns_rust.txt"),
-                    rows[..img_rows]
-                        .iter()
-                        .flat_map(|row| row[..img_cols].iter().copied()),
-                );
-            }
-
             for y in 0..h {
                 inverse_lifting97f(&mut rows[y][..w], w, &mut x_alloc);
             }
@@ -247,15 +233,16 @@ mod tests {
     /// per-operator conversion rules, which is a *different* rounding, not
     /// a less-precise one. This input/output pair is real data extracted
     /// from decoding baseline_256 at rate=0.1 (`-t 0 -s 64`, the row-pass
-    /// of the coarsest inverse-lifting level) via
-    /// verify/compare_traces.py's post_idwt_level2_columns seam, where 13
-    /// of 64 outputs previously differed from the C reference by ~1 ULP;
-    /// confirmed via disassembling a minimal standalone repro of
+    /// of the coarsest inverse-lifting level, isolated via a temporary
+    /// column-pass-only trace point since removed), where 13 of 64 outputs
+    /// previously differed from the C reference by ~1 ULP; confirmed via
+    /// disassembling a minimal standalone repro of
     /// `inversef97f` (gcc emits `addss` then `cvtss2sd` then `mulsd` for
     /// every such term) that this was the exact mechanism, not an
     /// unavoidable compiler-rounding difference (COMPATIBILITY_REPORT.md
     /// §3.3).
     #[test]
+    #[allow(clippy::excessive_precision)] // literals are pinned to the exact C-produced digits
     fn matches_c_reference_on_real_decode_data() {
         let mut x: [f32; 64] = [
             12.21094418,
