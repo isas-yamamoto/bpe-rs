@@ -344,7 +344,10 @@ mod tests {
             };
             let bit_depth_ac_5bits: u8 = bit_depth_ac_5bits.parse().unwrap();
             let s_20bits: usize = s_20bits.parse().unwrap();
-            let raw: Vec<u16> = bitmaxac_csv.split(',').map(|v| v.parse().unwrap()).collect();
+            let raw: Vec<u16> = bitmaxac_csv
+                .split(',')
+                .map(|v| v.parse().unwrap())
+                .collect();
             assert_eq!(raw.len(), s_20bits);
 
             let mut coding = CodingPara::new();
@@ -381,7 +384,10 @@ mod tests {
             let mut dec_coding = CodingPara::new();
             dec_coding.header.part1.bit_depth_ac_5bits = bit_depth_ac_5bits;
             dec_coding.header.part3.s_20bits = s_20bits as u32;
-            dec_coding.bits.open_read(dec_path.to_str().unwrap()).unwrap();
+            dec_coding
+                .bits
+                .open_read(dec_path.to_str().unwrap())
+                .unwrap();
             let mut dec_blocks = make_blocks(&vec![0; s_20bits]);
             ac_depth_decoder(&mut dec_coding, &mut dec_blocks).unwrap();
             let got_decoded: Vec<u16> = dec_blocks.iter().map(|b| b.bit_max_ac).collect();

@@ -167,8 +167,8 @@ pub fn dc_entropy_decoder(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::dpcm::dpcm_dc_mapper;
+    use super::*;
     use crate::bitstream::segment_buffer_flush_encoder;
     use std::fs;
     use std::path::PathBuf;
@@ -236,9 +236,14 @@ mod tests {
             let q: u8 = q.parse().unwrap();
             let n: u8 = n.parse().unwrap();
             let s_20bits: usize = s_20bits.parse().unwrap();
-            let shifted_dc: Vec<u32> = shifted_dc_csv.split(',').map(|v| v.parse().unwrap()).collect();
-            let dc_remainder: Vec<u16> =
-                dc_remainder_csv.split(',').map(|v| v.parse().unwrap()).collect();
+            let shifted_dc: Vec<u32> = shifted_dc_csv
+                .split(',')
+                .map(|v| v.parse().unwrap())
+                .collect();
+            let dc_remainder: Vec<u16> = dc_remainder_csv
+                .split(',')
+                .map(|v| v.parse().unwrap())
+                .collect();
             assert_eq!(shifted_dc.len(), s_20bits);
             assert_eq!(dc_remainder.len(), s_20bits);
 
@@ -283,7 +288,10 @@ mod tests {
                 let mut dec_coding = CodingPara::new();
                 dec_coding.n = n;
                 dec_coding.header.part3.s_20bits = s_20bits as u32;
-                dec_coding.bits.open_read(dec_path.to_str().unwrap()).unwrap();
+                dec_coding
+                    .bits
+                    .open_read(dec_path.to_str().unwrap())
+                    .unwrap();
                 let mut dec_blocks = make_blocks(&vec![0; s_20bits], &vec![0; s_20bits]);
                 dc_entropy_decoder(&mut dec_coding, &mut dec_blocks).unwrap();
                 let got_mapped: Vec<u32> = dec_blocks.iter().map(|b| b.mapped_dc).collect();
