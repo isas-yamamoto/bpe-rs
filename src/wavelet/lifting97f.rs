@@ -192,6 +192,18 @@ pub fn lifting_f97_2d(
             for y in 0..h {
                 inverse_lifting97f(&mut rows[y][..w], w, &mut x_alloc);
             }
+
+            // l==0's post-state is already covered by the post_idwt seam
+            // (dumped by the caller right after this function returns), so
+            // only the coarser intermediate levels need a dump here.
+            if l != 0 {
+                crate::trace::dump_f32_flat(
+                    &format!("post_idwt_level{l}_rust.txt"),
+                    rows[..img_rows]
+                        .iter()
+                        .flat_map(|row| row[..img_cols].iter().copied()),
+                );
+            }
         }
     }
     Ok(())
