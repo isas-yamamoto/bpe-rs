@@ -14,7 +14,7 @@ use crate::types::BitPlaneBits;
 /// `strict_c_compat` in `lifting97f.rs`): the mapped value this quirk
 /// produces gets Rice-coded straight into the bitstream, so unlike the
 /// float lifting it isn't safe to always take the "clean" answer. Only
-/// take it with `strict_c_compat = false` (`--precision-fixes`), where
+/// take it with `strict_c_compat = false` (`--fix-c-quirks`), where
 /// interop with the C reference is explicitly not a goal; the default
 /// `strict_c_compat = true` replicates the narrowing exactly.
 #[inline]

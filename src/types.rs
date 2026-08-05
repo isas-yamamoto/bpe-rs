@@ -336,7 +336,7 @@ pub struct CodingPara {
     /// quirks bit-for-bit -- the float 9/7 inverse lifting's per-operator
     /// f32 rounding, and DPCM DC mapping's int16-overflow bug -- rather
     /// than the more correct/precise but C-diverging behavior. See
-    /// `--precision-fixes` in main.rs, which clears this.
+    /// `--fix-c-quirks` in main.rs, which clears this.
     pub strict_c_compat: bool,
 }
 

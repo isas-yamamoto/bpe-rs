@@ -20,7 +20,7 @@ fn usage() {
     eprintln!("[-f]: byte order of a pixel (0 little endian, 1 big endian).");
     eprintln!("[-t]: wavelet transform. 1 integer 9-7, 0 floating 9-7.");
     eprintln!("[-s]: the number of blocks in each segment. By default it is 256.");
-    eprintln!("[--precision-fixes]: use corrected/more precise behavior instead of");
+    eprintln!("[--fix-c-quirks]: use corrected/more precise behavior instead of");
     eprintln!("    reproducing the C reference implementation's integer and float");
     eprintln!("    quirks (float 9/7 inverse-lifting rounding, DPCM DC mapping's");
     eprintln!("    int16 overflow). Off by default -- bit-for-bit C reference");
@@ -114,7 +114,7 @@ fn main() {
                 segment = need(i, &args).parse().unwrap_or(256);
                 i += 1;
             }
-            "--precision-fixes" => {
+            "--fix-c-quirks" => {
                 strict_c_compat = false;
             }
             _ => {
