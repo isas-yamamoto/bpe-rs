@@ -31,6 +31,14 @@ For identical inputs, the Rust and C encoders produce byte-identical
 [bpe-c-comparison](https://github.com/isas-yamamoto/bpe-c-comparison)
 for the procedure (local only, since it needs the C reference binary).
 
+This bit-for-bit compatibility is the default and requires reproducing
+a couple of the C reference's own integer/floating-point quirks (see
+[bpe-c-comparison's PRECISION_TRADEOFFS.md](https://github.com/isas-yamamoto/bpe-c-comparison/blob/main/PRECISION_TRADEOFFS.md)
+for the specifics). Pass `--fix-c-quirks` on the CLI to opt into the
+corrected/more precise behavior instead — bitstreams produced with that
+flag are no longer guaranteed to interoperate with the C reference
+implementation.
+
 ## Algorithm overview
 
 Encoding, in short:
