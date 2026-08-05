@@ -230,7 +230,7 @@ pub fn dc_encoding(
         return Ok(());
     }
 
-    dpcm_dc_mapper(block_info, s, coding.n as i16);
+    dpcm_dc_mapper(block_info, s, coding.n as i16, coding.strict_c_compat);
     dc_entropy_encoder(coding, block_info)?;
 
     Ok(())
@@ -271,7 +271,7 @@ pub fn dc_decoding(
         }
     } else {
         dc_entropy_decoder(coding, block_info)?;
-        dpcm_dc_demapper(block_info, s, coding.n as i16);
+        dpcm_dc_demapper(block_info, s, coding.n as i16, coding.strict_c_compat);
     }
 
     read_additional_dc_bitplanes(coding, block_info, s)?;

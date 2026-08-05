@@ -332,6 +332,10 @@ pub struct CodingPara {
     pub pixel_byte_order: u8,
     pub input_file: String,
     pub coding_output_file: String,
+    /// When set, the float 9/7 inverse lifting reproduces the C reference's
+    /// per-operator f32 rounding bit-for-bit instead of the more precise
+    /// (but C-diverging) f64 accumulation. See `--compat-c-ref` in main.rs.
+    pub strict_c_compat: bool,
 }
 
 impl CodingPara {
@@ -368,6 +372,7 @@ impl CodingPara {
             pixel_byte_order: 0,
             input_file: String::new(),
             coding_output_file: String::new(),
+            strict_c_compat: false,
         }
     }
 }

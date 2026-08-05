@@ -104,7 +104,14 @@ pub fn dwt_forward(coding: &CodingPara, imgin: &ImageI32, img_wav: &mut ImageI32
                     f97[i][j] = imgin[i][j] as f32;
                 }
             }
-            lifting_f97_2d(&mut f97, pad_rows, pad_cols, 3, false)?;
+            lifting_f97_2d(
+                &mut f97,
+                pad_rows,
+                pad_cols,
+                3,
+                false,
+                coding.strict_c_compat,
+            )?;
             for i in 0..pad_rows {
                 for j in 0..pad_cols {
                     img_wav[i][j] = round_away_from_zero(f97[i][j]);
@@ -147,7 +154,14 @@ pub fn dwt_reverse(block: &mut ImageI32, coding: &CodingPara) -> BpeResult<()> {
             }
         }
         // C passes ImageWidth without pad for this call.
-        lifting_f97_2d(&mut temp_f, rows, coding.image_width as usize, 3, true)?;
+        lifting_f97_2d(
+            &mut temp_f,
+            rows,
+            coding.image_width as usize,
+            3,
+            true,
+            coding.strict_c_compat,
+        )?;
         for k in 0..rows {
             for p in 0..cols {
                 block[k][p] = temp_f[k][p] as i32;
@@ -169,7 +183,7 @@ pub fn dwt_reverse_floating(block: &mut ImageF32, coding: &CodingPara) -> BpeRes
             temp_f[k][p] = block[k][p];
         }
     }
-    lifting_f97_2d(&mut temp_f, rows, cols, 3, true)?;
+    lifting_f97_2d(&mut temp_f, rows, cols, 3, true, coding.strict_c_compat)?;
     for k in 0..rows {
         for p in 0..coding.image_width as usize {
             let v = temp_f[k][p];

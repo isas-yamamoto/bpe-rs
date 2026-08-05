@@ -9,12 +9,21 @@ use crate::types::BitPlaneBits;
 /// case N == 16 hits whenever a block's raw value has its top bit set) the
 /// short-cast wraps to -32768 first, so negating gives +32768 -- the
 /// opposite sign from what negating the un-narrowed i32 would give.
-/// Replicating the narrowing step is required to match the C reference bit
-/// for bit; skipping it produces a real (if rare) divergence, not just an
-/// equivalent restatement.
+///
+/// This isn't a rounding nuance like the float-DWT precision (see
+/// `strict_c_compat` in `lifting97f.rs`): the mapped value this quirk
+/// produces gets Rice-coded straight into the bitstream, so unlike the
+/// float lifting it isn't safe to always take the "clean" answer. Only
+/// take it with `strict_c_compat = false`, where interop with the C
+/// reference is explicitly not a goal; with `strict_c_compat = true`
+/// (`--compat-c-ref`), replicate the narrowing exactly.
 #[inline]
-fn neg_short(inner: i32) -> i32 {
-    -((inner as i16) as i32)
+fn neg_short(inner: i32, strict_c_compat: bool) -> i32 {
+    if strict_c_compat {
+        -((inner as i16) as i32)
+    } else {
+        -inner
+    }
 }
 
 /// C: `theta = min(ShiftedDC - X_Min, X_Max - ShiftedDC)`. `ShiftedDC` and
@@ -25,17 +34,26 @@ fn neg_short(inner: i32) -> i32 {
 /// (above) can push it outside that range, and when it does, one of the
 /// two subtractions wraps around to a huge unsigned value instead of going
 /// negative. C's unsigned `min()` then picks based on that huge wrapped
-/// value, not the mathematically-intended negative one. A signed `i32`
-/// computation never reproduces that: it has to be unsigned wraparound
-/// (`wrapping_sub`) to match bit for bit.
+/// value, not the mathematically-intended negative one.
+///
+/// Same tradeoff as `neg_short`: `strict_c_compat = true` reproduces C's
+/// unsigned wraparound (`wrapping_sub`) bit for bit; `strict_c_compat =
+/// false` computes the mathematically-intended signed `min` instead, which
+/// only an encoder/decoder pair that both skip the bug (not the real C
+/// reference) can interoperate with.
 #[inline]
-fn theta_from_prev(prev: u32, x_min: i32, x_max: i32) -> i32 {
-    let term1 = prev.wrapping_sub(x_min as u32);
-    let term2 = (x_max as u32).wrapping_sub(prev);
-    term1.min(term2) as i32
+fn theta_from_prev(prev: u32, x_min: i32, x_max: i32, strict_c_compat: bool) -> i32 {
+    if strict_c_compat {
+        let term1 = prev.wrapping_sub(x_min as u32);
+        let term2 = (x_max as u32).wrapping_sub(prev);
+        term1.min(term2) as i32
+    } else {
+        let prev = prev as i32;
+        (prev - x_min).min(x_max - prev)
+    }
 }
 
-pub fn dpcm_dc_mapper(block_info: &mut [BitPlaneBits], size: usize, n: i16) {
+pub fn dpcm_dc_mapper(block_info: &mut [BitPlaneBits], size: usize, n: i16, strict_c_compat: bool) {
     let x_min: i32 = -(1 << (n - 1));
     let x_max: i32 = (1i32 << (n - 1)) - 1;
     let mut max_mapped: u32 = 0;
@@ -51,20 +69,21 @@ pub fn dpcm_dc_mapper(block_info: &mut [BitPlaneBits], size: usize, n: i16) {
 
     let sd0 = block_info[0].shifted_dc as i32;
     if (sd0 & (1 << (n - 1))) > 0 {
-        block_info[0].shifted_dc = neg_short(((sd0 ^ bits1) & bits1) + 1) as u32;
+        block_info[0].shifted_dc = neg_short(((sd0 ^ bits1) & bits1) + 1, strict_c_compat) as u32;
     }
     diff_dc[0] = block_info[0].shifted_dc as i32;
 
     for i in 1..size {
         let sdi = block_info[i].shifted_dc as i32;
         if (sdi & (1 << (n - 1))) > 0 {
-            block_info[i].shifted_dc = neg_short(((sdi ^ bits1) & bits1) + 1) as u32;
+            block_info[i].shifted_dc =
+                neg_short(((sdi ^ bits1) & bits1) + 1, strict_c_compat) as u32;
         }
         diff_dc[i] = (block_info[i].shifted_dc as i32) - (block_info[i - 1].shifted_dc as i32);
     }
 
     for i in 1..size {
-        let theta = theta_from_prev(block_info[i - 1].shifted_dc, x_min, x_max);
+        let theta = theta_from_prev(block_info[i - 1].shifted_dc, x_min, x_max, strict_c_compat);
         if diff_dc[i] >= 0 && diff_dc[i] <= theta {
             block_info[i].mapped_dc = (2 * diff_dc[i]) as u32;
         } else if diff_dc[i] < 0 && diff_dc[i] >= -theta {
@@ -78,7 +97,12 @@ pub fn dpcm_dc_mapper(block_info: &mut [BitPlaneBits], size: usize, n: i16) {
     }
 }
 
-pub fn dpcm_dc_demapper(block_info: &mut [BitPlaneBits], size: usize, n: i16) {
+pub fn dpcm_dc_demapper(
+    block_info: &mut [BitPlaneBits],
+    size: usize,
+    n: i16,
+    strict_c_compat: bool,
+) {
     let x_max: i32 = (1i32 << (n - 1)) - 1;
     let x_min: i32 = -(1 << (n - 1));
 
@@ -94,12 +118,12 @@ pub fn dpcm_dc_demapper(block_info: &mut [BitPlaneBits], size: usize, n: i16) {
 
     let sd0 = block_info[0].shifted_dc as i32;
     if (sd0 & (1 << (n - 1))) > 0 {
-        block_info[0].shifted_dc = neg_short(((sd0 ^ bits1) & bits1) + 1) as u32;
+        block_info[0].shifted_dc = neg_short(((sd0 ^ bits1) & bits1) + 1, strict_c_compat) as u32;
     }
 
     for i in 1..size {
         let prev = block_info[i - 1].shifted_dc as i32;
-        let theta = theta_from_prev(block_info[i - 1].shifted_dc, x_min, x_max);
+        let theta = theta_from_prev(block_info[i - 1].shifted_dc, x_min, x_max, strict_c_compat);
         let mapped = block_info[i].mapped_dc as i32;
 
         let mut d;
@@ -181,7 +205,7 @@ mod tests {
             assert_eq!(raw.len(), size);
 
             let mut encoded = make_blocks(&raw);
-            dpcm_dc_mapper(&mut encoded, size, n);
+            dpcm_dc_mapper(&mut encoded, size, n, true);
             let got_mapped: Vec<u32> = encoded.iter().map(|b| b.mapped_dc).collect();
             assert_eq!(
                 got_mapped, expected_mapped,
@@ -193,7 +217,7 @@ mod tests {
             for i in 0..size {
                 decoded[i].mapped_dc = encoded[i].mapped_dc;
             }
-            dpcm_dc_demapper(&mut decoded, size, n);
+            dpcm_dc_demapper(&mut decoded, size, n, true);
             let got_decoded: Vec<u32> = decoded.iter().map(|b| b.shifted_dc).collect();
             assert_eq!(
                 got_decoded, expected_decoded,
@@ -208,38 +232,60 @@ mod tests {
 
     #[test]
     fn mapper_then_demapper_restores_shifted_dc() {
-        let raw_dc: Vec<u32> = vec![0, 1, 2, 255, 128, 127, 64, 200, 3, 250];
+        for strict_c_compat in [true, false] {
+            let raw_dc: Vec<u32> = vec![0, 1, 2, 255, 128, 127, 64, 200, 3, 250];
+            let size = raw_dc.len();
+
+            let mut encoded = make_blocks(&raw_dc);
+            dpcm_dc_mapper(&mut encoded, size, N, strict_c_compat);
+
+            let mut decoded = make_blocks(&vec![0; size]);
+            for i in 0..size {
+                decoded[i].mapped_dc = encoded[i].mapped_dc;
+            }
+            dpcm_dc_demapper(&mut decoded, size, N, strict_c_compat);
+
+            for i in 0..size {
+                assert_eq!(
+                    decoded[i].shifted_dc, encoded[i].shifted_dc,
+                    "strict_c_compat={} block {} mismatch",
+                    strict_c_compat, i
+                );
+            }
+        }
+    }
+
+    /// `neg_short`'s overflow only fires when `shifted_dc`'s top bit (bit
+    /// `n-1`) is set on a value whose narrowed negation should wrap -- at
+    /// `N=16` that's `inner == 32768`. `strict_c_compat=true` must reproduce
+    /// the C reference's wrap-to-`+32768`; `strict_c_compat=false` must give
+    /// the mathematically-intended `-32768` (as an unsigned `u32` bit
+    /// pattern, i.e. `(-32768i32) as u32`).
+    #[test]
+    fn neg_short_overflow_only_reproduced_in_strict_mode() {
+        let raw_dc: Vec<u32> = vec![0, 1u32 << 15];
         let size = raw_dc.len();
 
-        let mut encoded = make_blocks(&raw_dc);
-        dpcm_dc_mapper(&mut encoded, size, N);
+        let mut strict = make_blocks(&raw_dc);
+        dpcm_dc_mapper(&mut strict, size, 16, true);
+        assert_eq!(strict[1].shifted_dc, 1u32 << 15);
 
-        let mut decoded = make_blocks(&vec![0; size]);
-        for i in 0..size {
-            decoded[i].mapped_dc = encoded[i].mapped_dc;
-        }
-        dpcm_dc_demapper(&mut decoded, size, N);
-
-        for i in 0..size {
-            assert_eq!(
-                decoded[i].shifted_dc, encoded[i].shifted_dc,
-                "block {} mismatch",
-                i
-            );
-        }
+        let mut clean = make_blocks(&raw_dc);
+        dpcm_dc_mapper(&mut clean, size, 16, false);
+        assert_eq!(clean[1].shifted_dc, (-(1i32 << 15)) as u32);
     }
 
     #[test]
     fn first_block_is_sent_verbatim() {
         let mut blocks = make_blocks(&[42, 43]);
-        dpcm_dc_mapper(&mut blocks, 2, N);
+        dpcm_dc_mapper(&mut blocks, 2, N, true);
         assert_eq!(blocks[0].mapped_dc, 42);
     }
 
     #[test]
     fn constant_dc_maps_to_zero_differences() {
         let mut blocks = make_blocks(&vec![100; 5]);
-        dpcm_dc_mapper(&mut blocks, 5, N);
+        dpcm_dc_mapper(&mut blocks, 5, N, true);
         for block in blocks.iter().skip(1) {
             assert_eq!(block.mapped_dc, 0);
         }

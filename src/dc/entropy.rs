@@ -257,7 +257,7 @@ mod tests {
             coding.quantization_factor_q = q;
 
             let mut blocks = make_blocks(&shifted_dc, &dc_remainder);
-            dpcm_dc_mapper(&mut blocks, s_20bits, n as i16);
+            dpcm_dc_mapper(&mut blocks, s_20bits, n as i16, true);
 
             let enc_path = temp_path(&format!("shared_dc_entropy_enc_{line_no}.bin"));
             coding.bits.open_write(enc_path.to_str().unwrap()).unwrap();

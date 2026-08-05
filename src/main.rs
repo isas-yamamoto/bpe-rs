@@ -20,6 +20,12 @@ fn usage() {
     eprintln!("[-f]: byte order of a pixel (0 little endian, 1 big endian).");
     eprintln!("[-t]: wavelet transform. 1 integer 9-7, 0 floating 9-7.");
     eprintln!("[-s]: the number of blocks in each segment. By default it is 256.");
+    eprintln!("[--compat-c-ref]: reproduce the C reference implementation's integer");
+    eprintln!("    and float quirks bit-for-bit (float 9/7 inverse-lifting rounding,");
+    eprintln!("    DPCM DC mapping's int16 overflow). Off by default, which uses");
+    eprintln!("    the corrected/more precise behavior instead -- bitstreams produced");
+    eprintln!("    without this flag are not guaranteed to interoperate with the C");
+    eprintln!("    reference implementation.");
     eprintln!("eg 1: bpe -e sensin.img -o codes -r 1.0 -w 256 -h 256 -s 256");
     eprintln!("eg 2: bpe -d codes -o ss.img");
 }
@@ -38,6 +44,7 @@ fn main() {
     let mut dwt_type: u8 = 1;
     let mut signed_pixels: u8 = 0;
     let mut segment: u32 = 256;
+    let mut strict_c_compat = false;
 
     let mut i = 1usize;
     while i < args.len() {
@@ -107,6 +114,9 @@ fn main() {
                 segment = need(i, &args).parse().unwrap_or(256);
                 i += 1;
             }
+            "--compat-c-ref" => {
+                strict_c_compat = true;
+            }
             _ => {
                 usage();
                 error_exit(BpeError::InvalidCodingParameters);
@@ -146,6 +156,7 @@ fn main() {
         coding.header.part4.dwt_type = dwt_type;
         coding.header.part4.signed_pixels = signed_pixels != 0;
         coding.header.part3.s_20bits = segment;
+        coding.strict_c_compat = strict_c_compat;
         if coding.bits_per_pixel != 0.0 && coding.header.part2.seg_byte_limit_27bits == 0 {
             coding.header.part2.seg_byte_limit_27bits =
                 (coding.bits_per_pixel * coding.header.part3.s_20bits as f32 * 64.0 / 8.0) as u32;
@@ -164,6 +175,7 @@ fn main() {
         coding.coding_output_file = output;
         coding.bits_per_pixel = bpp;
         coding.pixel_byte_order = byte_order;
+        coding.strict_c_compat = strict_c_compat;
 
         if let Err(e) = decoder_engine(&mut coding) {
             error_exit(e);
