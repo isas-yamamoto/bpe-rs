@@ -14,9 +14,9 @@ use crate::types::BitPlaneBits;
 /// `strict_c_compat` in `lifting97f.rs`): the mapped value this quirk
 /// produces gets Rice-coded straight into the bitstream, so unlike the
 /// float lifting it isn't safe to always take the "clean" answer. Only
-/// take it with `strict_c_compat = false`, where interop with the C
-/// reference is explicitly not a goal; with `strict_c_compat = true`
-/// (`--compat-c-ref`), replicate the narrowing exactly.
+/// take it with `strict_c_compat = false` (`--precision-fixes`), where
+/// interop with the C reference is explicitly not a goal; the default
+/// `strict_c_compat = true` replicates the narrowing exactly.
 #[inline]
 fn neg_short(inner: i32, strict_c_compat: bool) -> i32 {
     if strict_c_compat {

@@ -332,9 +332,11 @@ pub struct CodingPara {
     pub pixel_byte_order: u8,
     pub input_file: String,
     pub coding_output_file: String,
-    /// When set, the float 9/7 inverse lifting reproduces the C reference's
-    /// per-operator f32 rounding bit-for-bit instead of the more precise
-    /// (but C-diverging) f64 accumulation. See `--compat-c-ref` in main.rs.
+    /// When set (the default), reproduce the C reference's integer/float
+    /// quirks bit-for-bit -- the float 9/7 inverse lifting's per-operator
+    /// f32 rounding, and DPCM DC mapping's int16-overflow bug -- rather
+    /// than the more correct/precise but C-diverging behavior. See
+    /// `--precision-fixes` in main.rs, which clears this.
     pub strict_c_compat: bool,
 }
 
@@ -372,7 +374,7 @@ impl CodingPara {
             pixel_byte_order: 0,
             input_file: String::new(),
             coding_output_file: String::new(),
-            strict_c_compat: false,
+            strict_c_compat: true,
         }
     }
 }

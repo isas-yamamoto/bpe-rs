@@ -20,12 +20,12 @@ fn usage() {
     eprintln!("[-f]: byte order of a pixel (0 little endian, 1 big endian).");
     eprintln!("[-t]: wavelet transform. 1 integer 9-7, 0 floating 9-7.");
     eprintln!("[-s]: the number of blocks in each segment. By default it is 256.");
-    eprintln!("[--compat-c-ref]: reproduce the C reference implementation's integer");
-    eprintln!("    and float quirks bit-for-bit (float 9/7 inverse-lifting rounding,");
-    eprintln!("    DPCM DC mapping's int16 overflow). Off by default, which uses");
-    eprintln!("    the corrected/more precise behavior instead -- bitstreams produced");
-    eprintln!("    without this flag are not guaranteed to interoperate with the C");
-    eprintln!("    reference implementation.");
+    eprintln!("[--precision-fixes]: use corrected/more precise behavior instead of");
+    eprintln!("    reproducing the C reference implementation's integer and float");
+    eprintln!("    quirks (float 9/7 inverse-lifting rounding, DPCM DC mapping's");
+    eprintln!("    int16 overflow). Off by default -- bit-for-bit C reference");
+    eprintln!("    compatibility is the default; bitstreams produced with this flag");
+    eprintln!("    are not guaranteed to interoperate with the C reference implementation.");
     eprintln!("eg 1: bpe -e sensin.img -o codes -r 1.0 -w 256 -h 256 -s 256");
     eprintln!("eg 2: bpe -d codes -o ss.img");
 }
@@ -44,7 +44,7 @@ fn main() {
     let mut dwt_type: u8 = 1;
     let mut signed_pixels: u8 = 0;
     let mut segment: u32 = 256;
-    let mut strict_c_compat = false;
+    let mut strict_c_compat = true;
 
     let mut i = 1usize;
     while i < args.len() {
@@ -114,8 +114,8 @@ fn main() {
                 segment = need(i, &args).parse().unwrap_or(256);
                 i += 1;
             }
-            "--compat-c-ref" => {
-                strict_c_compat = true;
+            "--precision-fixes" => {
+                strict_c_compat = false;
             }
             _ => {
                 usage();
